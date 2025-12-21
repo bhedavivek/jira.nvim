@@ -1,9 +1,10 @@
 local state = require("jira.state")
+local util = require("jira.util")
 local api = vim.api
 
 local MAX = {
   TITLE = 60,
-  ASSIGNEE = 20,
+  ASSIGNEE = 12,
   TIME = 15,
   STATUS = 14,
 }
@@ -33,14 +34,14 @@ end
 local function render_progress_bar(spent, estimate, width)
   local total = math.max(estimate, spent)
   if total <= 0 then
-    return string.rep("┃", width), 0
+    return string.rep("▰", width), 0
   end
 
   local ratio = spent / total
   local filled_len = math.floor(ratio * width)
   filled_len = math.min(width, math.max(0, filled_len))
 
-  local bar = string.rep("┃", filled_len) .. string.rep("┃", width - filled_len)
+  local bar = string.rep("▰", filled_len) .. string.rep("▱", width - filled_len)
   return bar, filled_len
 end
 
@@ -77,6 +78,71 @@ local function get_issue_icon(node)
   end
 
   return "●", "JiraIconStory"
+end
+
+---@param spent number
+---@param estimate number
+---@return string col1_str
+---@return string col1_hl
+local function get_time_display_info(spent, estimate)
+  local col1_str = ""
+  local col1_hl = "Comment"
+  local remaining = math.max(0, estimate - spent)
+
+  if estimate == 0 and spent > 0 then
+    col1_str = string.format("󱎫 %s", util.format_time(spent))
+    col1_hl = "WarningMsg"
+  elseif estimate > 0 then
+    col1_str = string.format("󱎫 %s/%s", util.format_time(spent), util.format_time(estimate))
+
+    if remaining > 0 then
+      col1_hl = "Comment"
+    else
+      local overdue = spent - estimate
+      if overdue > 0 then
+        col1_hl = "Error"
+      else
+        col1_str = " " .. util.format_time(spent)
+        col1_hl = "exgreen"
+      end
+    end
+  elseif spent == 0 and estimate == 0 then
+    col1_str = "-"
+    col1_hl = "Comment"
+  end
+
+  return col1_str, col1_hl
+end
+
+---@param node JiraIssueNode
+---@param is_root boolean
+---@param bar_width number
+---@return string col1_str
+---@return string col1_hl
+---@return string col2_str
+---@return number bar_filled_len
+local function get_right_part_info(node, is_root, bar_width)
+  local col1_str = ""
+  local col1_hl = "Comment"
+  local col2_str = ""
+  local bar_filled_len = 0
+
+  if is_root then
+    local spent, estimate = get_totals(node)
+    local bar, filled = render_progress_bar(spent, estimate, bar_width)
+    bar_filled_len = filled
+    col1_str = string.format("󱎫 %s/%s", util.format_time(spent), util.format_time(math.max(estimate, spent)))
+    col2_str = bar
+  else
+    local spent = node.time_spent or 0
+    local estimate = node.time_estimate or 0
+    col1_str, col1_hl = get_time_display_info(spent, estimate)
+
+    local ass = truncate(node.assignee or "Unassigned", MAX.ASSIGNEE - 2)
+    col2_str = " " .. ass
+  end
+
+  return col1_str, col1_hl, col2_str, bar_filled_len
 end
 
 -- ---------------------------------------------
@@ -120,32 +186,8 @@ local function render_issue_line(node, depth, row)
   add_hl(highlights, col, pts, "JiraStoryPoint")
 
   -- RIGHT -------------------------------------------------
-  local col1_str = "" -- Time Info
-  local col2_str = "" -- Assignee or Progress Bar
-  local bar_filled_len = 0
-  local bar_width = 20
-
-  if is_root then
-    local spent, estimate = get_totals(node)
-    local bar, filled = render_progress_bar(spent, estimate, bar_width)
-    bar_filled_len = filled
-    col1_str = string.format("󱎫 %gh/%gh", spent, math.max(estimate, spent))
-    col2_str = bar
-  else
-    local spent = node.time_spent or 0
-    local estimate = node.time_estimate or 0
-    local remaining = math.max(0, estimate - spent)
-    if estimate > 0 then
-      if remaining > 0 then
-        col1_str = string.format("󱎫 %gh left", remaining)
-      else
-        col1_str = "󱎫 done"
-      end
-    end
-
-    local ass = truncate(node.assignee or "Unassigned", MAX.ASSIGNEE - 2)
-    col2_str = " " .. ass
-  end
+  local bar_width = 12
+  local col1_str, col1_hl, col2_str, bar_filled_len = get_right_part_info(node, is_root, bar_width)
 
   local col1_pad = string.rep(" ", MAX.TIME - vim.fn.strdisplaywidth(col1_str))
   local col2_pad = string.rep(" ", MAX.ASSIGNEE - vim.fn.strdisplaywidth(col2_str))
@@ -164,7 +206,7 @@ local function render_issue_line(node, depth, row)
 
   -- Highlight Column 1 (Time Info)
   if col1_str ~= "" then
-    add_hl(highlights, right_col_start, col1_str, "Comment")
+    add_hl(highlights, right_col_start, col1_str, col1_hl)
   end
 
   -- Highlight Column 2 (Assignee or Progress Bar)
@@ -172,7 +214,7 @@ local function render_issue_line(node, depth, row)
   if is_root then
     local filled_bytes = bar_filled_len * 3
     local empty_bytes = (bar_width - bar_filled_len) * 3
-    add_hl(highlights, right_col2_start, string.sub(col2_str, 1, filled_bytes), "exgreen")
+    add_hl(highlights, right_col2_start, string.sub(col2_str, 1, filled_bytes), "JiraProgressBar")
     add_hl(highlights, right_col2_start + filled_bytes,
       string.sub(col2_str, filled_bytes + 1, filled_bytes + empty_bytes), "linenr")
   else

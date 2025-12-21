@@ -28,11 +28,12 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "jql": "project = {{project}} AND sprint in openSprints() ORDER BY status ASC, priority DESC",
+  "jql": "project = {{project}} AND sprint in openSprints() AND key=COM-17976 ORDER BY status ASC, priority DESC",
   "fields": [
     "summary",
     "issuetype",
-    "customfield_10015"
+    "timespent",
+    "aggregatetimeoriginalestimate"
   ],
   "nextPageToken": "",
   "maxResults": 20

@@ -38,8 +38,6 @@ M.open = function(project_key)
     return
   end
 
-  vim.notify("Loaded Dashboard for " .. project_key .. "...", vim.log.levels.INFO)
-
   -- Fetch Status Colors
   local api_client = require("jira.jira-api.api")
   local project_statuses, st_err = api_client.get_project_statuses(project_key)

@@ -46,18 +46,19 @@ function M.setup_static_highlights()
   vim.api.nvim_set_hl(0, "JiraAssignee", { link = "MoreMsg" })
   vim.api.nvim_set_hl(0, "JiraAssigneeUnassigned", { link = "Comment", italic = true })
   vim.api.nvim_set_hl(0, "exgreen", { fg = "#a6e3a1" })
+  vim.api.nvim_set_hl(0, "JiraProgressBar", { link = "Function" })
   vim.api.nvim_set_hl(0, "JiraStatus", { link = "lualine_a_insert" })
   vim.api.nvim_set_hl(0, "JiraStatusRoot", { link = "lualine_a_insert", bold = true })
-  
+
   -- Icons
-  vim.api.nvim_set_hl(0, "JiraIconBug", { fg = "#f38ba8" }) -- Red
-  vim.api.nvim_set_hl(0, "JiraIconStory", { fg = "#a6e3a1" }) -- Green
-  vim.api.nvim_set_hl(0, "JiraIconTask", { fg = "#89b4fa" }) -- Blue
-  vim.api.nvim_set_hl(0, "JiraIconSubTask", { fg = "#94e2d5" }) -- Teal
-  vim.api.nvim_set_hl(0, "JiraIconTest", { fg = "#fab387" }) -- Peach
-  vim.api.nvim_set_hl(0, "JiraIconDesign", { fg = "#cba6f7" }) -- Mauve
+  vim.api.nvim_set_hl(0, "JiraIconBug", { fg = "#f38ba8" })      -- Red
+  vim.api.nvim_set_hl(0, "JiraIconStory", { fg = "#a6e3a1" })    -- Green
+  vim.api.nvim_set_hl(0, "JiraIconTask", { fg = "#89b4fa" })     -- Blue
+  vim.api.nvim_set_hl(0, "JiraIconSubTask", { fg = "#94e2d5" })  -- Teal
+  vim.api.nvim_set_hl(0, "JiraIconTest", { fg = "#fab387" })     -- Peach
+  vim.api.nvim_set_hl(0, "JiraIconDesign", { fg = "#cba6f7" })   -- Mauve
   vim.api.nvim_set_hl(0, "JiraIconOverhead", { fg = "#9399b2" }) -- Overlay2
-  vim.api.nvim_set_hl(0, "JiraIconImp", { fg = "#89dceb" }) -- Sky
+  vim.api.nvim_set_hl(0, "JiraIconImp", { fg = "#89dceb" })      -- Sky
 end
 
 function M.create_window()
@@ -71,7 +72,7 @@ function M.create_window()
     col = 0,
     style = "minimal",
     focusable = false,
-    zindex = 100,
+    zindex = 44,
   })
   api.nvim_win_set_option(state.dim_win, "winblend", 50)
   api.nvim_win_set_option(state.dim_win, "winhighlight", "Normal:JiraDim")
@@ -94,7 +95,7 @@ function M.create_window()
     border = { " ", " ", " ", " ", " ", " ", " ", " " },
     title = { { " 󱥚 Jira Board ", "StatusLineTerm" } },
     title_pos = "center",
-    zindex = 101,
+    zindex = 45,
   })
 
   api.nvim_win_set_hl_ns(state.win, state.ns)
@@ -109,7 +110,7 @@ function M.create_window()
       end
     end,
   })
-  
+
   api.nvim_set_current_win(state.win)
 end
 

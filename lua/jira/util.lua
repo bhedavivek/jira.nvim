@@ -54,22 +54,17 @@ end
 ---@param seconds number?
 ---@return string
 M.format_time = function(seconds)
-  if not seconds or seconds == 0 then
-    return "-"
+  if not seconds or seconds <= 0 then
+    return "0h"
   end
 
-  local hours = math.floor(seconds / 3600)
-  local mins = math.floor((seconds % 3600) / 60)
-
-  if hours > 0 then
-    if mins > 0 then
-      return string.format("%dh %dm", hours, mins)
-    else
-      return string.format("%dh", hours)
-    end
-  else
-    return string.format("%dm", mins)
+  local hours = seconds / 3600
+  -- If it's an integer, don't show .0
+  if hours % 1 == 0 then
+    return string.format("%dh", hours)
   end
+  -- Otherwise show 1 decimal place
+  return string.format("%.1fh", hours)
 end
 
 return M

@@ -76,8 +76,8 @@ function M.get_active_sprint_issues(project)
         time_spent = fields.timespent
       end
 
-      if is_valid(fields.timeestimate) then
-        time_estimate = fields.timeestimate
+      if is_valid(fields.aggregatetimeoriginalestimate) then
+        time_estimate = fields.aggregatetimeoriginalestimate
       end
 
       local story_point_field = config.options.jira.story_point_field
