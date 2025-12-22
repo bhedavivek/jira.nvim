@@ -2,7 +2,7 @@
 
 A Neovim plugin for managing JIRA tasks with a beautiful UI
 
-<img width="3840" height="2386" alt="image" src="https://github.com/user-attachments/assets/dc301216-7067-4a00-b43f-d1d00d1127b6" />
+<img width="3022" height="2162" alt="image" src="https://github.com/user-attachments/assets/611cdfb4-29ed-4d59-8362-74c142e81257" />
 
 
 ## Features (AI generated)
