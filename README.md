@@ -62,15 +62,15 @@ If you don't provide a project key, you will be prompted to enter one.
 ## Features (AI generated)
 
 - 📋 View active sprint tasks
-- 👥 See who is assigned to each task
-- ✅ Expand/collapse parent tasks to view subtasks
-- 📝 View acceptance criteria
+- 👥 Query tasks by custom JQL
+- 📝 Read task as markdown
 - 🔄 Change task status
-- ⏱️  Log time on tasks
-- 👤 Assign tasks to yourself
-- 🎨 Beautiful UI with syntax highlighting
-- 🎨 Edit task description, comment as Markdown
+- ⏱️ Log time on tasks
+- 👤 Assign tasks
 - 🎨 Git integration
+- 🎨 Edit task
+- 🎨 Comment
+- ⏱️ Work report
 
 ## TODO
 - [x] Jira sprint board
@@ -84,7 +84,7 @@ If you don't provide a project key, you will be prompted to enter one.
 - [x] Change assignee
 - [x] Log time
 - [ ] Comment
-- [ ] Update
+- [ ] Edit task
 - [ ] Update UI when terminal size change
 ....
 
