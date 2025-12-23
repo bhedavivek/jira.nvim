@@ -82,11 +82,10 @@ If you don't provide a project key, you will be prompted to enter one.
 - [x] Format time
 - [x] Backlog (via JQL Dashboard)
 - [x] Custom JQL & Saved Queries
+- [x] Change status
 - [ ] Log time
-- [ ] Change status
 - [ ] Comment
 - [ ] Update
-- [ ] Filter
 - [ ] Update UI when terminal size change
 ....
 

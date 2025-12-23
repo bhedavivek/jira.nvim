@@ -70,7 +70,8 @@ local function curl_request(method, endpoint, data, callback)
 
       local response = table.concat(stdout, "")
       if not response or response == "" then
-        if callback then callback(nil, "Empty response from Jira") end
+        -- Return empty table for success with no content (e.g. 204 No Content)
+        if callback then callback({}, nil) end
         return
       end
 

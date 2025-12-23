@@ -11,7 +11,6 @@ local state = {
   current_query = nil,
   custom_jql = nil,
   cache = {},
-  mode = "Normal",
   query_map = {},
   jql_line = nil,
 }

@@ -342,7 +342,7 @@ local function render_header(view)
     state.query_map = {}
     for i, name in ipairs(query_names) do
       local is_active = (state.current_query == name)
-      local line = string.format("      (%d) %s", i, name)
+      local line = string.format("      %s", name)
       local row = #header_lines
       table.insert(header_lines, line)
       state.query_map[row] = name
@@ -350,8 +350,7 @@ local function render_header(view)
       -- Border for item
       table.insert(hls, { row = row, start_col = 2, virt_text = { { "│", "Comment" } }, virt_text_pos = "overlay" })
 
-      table.insert(hls, { row = row, start_col = 6, end_col = 9, hl = "Special" })
-      table.insert(hls, { row = row, start_col = 10, end_col = -1, hl = is_active and "JiraSubTabActive" or "Comment" })
+      table.insert(hls, { row = row, start_col = 6, end_col = -1, hl = is_active and "JiraSubTabActive" or "Comment" })
     end
     table.insert(header_lines, "    ")
   end
@@ -372,36 +371,22 @@ local function render_header(view)
     end
     api.nvim_buf_set_extmark(state.buf, state.ns, h.row, h.start_col, opts)
   end
-
-  -- Mode display on the right
-  local mode_str = string.format("[%s Mode]", state.mode or "Normal")
-  api.nvim_buf_set_extmark(state.buf, state.ns, 0, 0, {
-    virt_text = { { mode_str, "Special" } },
-    virt_text_pos = "right_align",
-  })
 end
 
 function M.render_help(view)
   render_header(view)
   local help_content = {
-    { section = "Global" },
-    { k = "q", d = "Close Board" },
-    { k = "a", d = "Switch between NORMAL and ACTION mode" },
-    
-    { section = "Normal Mode" },
+    { section = "Navigation & View" },
     { k = "<Tab>", d = "Toggle Node (Expand/Collapse)" },
     { k = "S, J, H", d = "Switch View (Sprint, JQL, Help)" },
+    { k = "q", d = "Close Board" },
+    { k = "r", d = "Refresh current view" },
+    
+    { section = "Issue Actions" },
     { k = "K", d = "Quick Issue Details (Popup)" },
     { k = "m", d = "Read Task as Markdown" },
     { k = "gx", d = "Open Task in Browser" },
-    { k = "r", d = "Refresh current view" },
-
-    { section = "Action Mode (Press 'a' to enter)" },
-    { k = "s", d = "Update Status (Planned)" },
-    { k = "c", d = "Add Comment (Planned)" },
-    { k = "l", d = "Log Time (Planned)" },
-    { k = "e", d = "Edit Issue (Planned)" },
-    { k = "Esc, a", d = "Back to Normal Mode" },
+    { k = "s", d = "Update Status" },
   }
 
   local lines = { "" }

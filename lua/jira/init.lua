@@ -92,7 +92,7 @@ M.switch_query = function(query_name)
 end
 
 M.setup_keymaps = function()
-  local opts = { noremap = true, silent = true, buffer = state.buf } 
+  local opts = { noremap = true, silent = true, buffer = state.buf }
   
   -- Clear existing buffer keymaps
   local keys_to_clear = { "o", "S", "B", "J", "H", "K", "m", "gx", "r", "q", "a", "s", "c", "l", "e", "i", "<Esc>", "1", "2", "3", "4", "5", "6", "7", "8", "9" }
@@ -100,58 +100,38 @@ M.setup_keymaps = function()
     pcall(vim.api.nvim_buf_del_keymap, state.buf, "n", k)
   end
 
-  -- Navigation (Always available)
+  -- General
   vim.keymap.set("n", "q", function()
     if state.win and api.nvim_win_is_valid(state.win) then
        api.nvim_win_close(state.win, true)
     end
   end, opts)
+  vim.keymap.set("n", "r", function()
+    local cache_key = get_cache_key(state.project_key, state.current_view)
+    state.cache[cache_key] = nil
+    require("jira").load_view(state.project_key, state.current_view)
+  end, opts)
 
-  if state.mode == "Normal" then
-    -- Actions
-    vim.keymap.set("n", "<Tab>", function() require("jira").toggle_node() end, opts)
-    vim.keymap.set("n", "<CR>", function() require("jira").handle_cr() end, opts)
+  -- Navigation
+  vim.keymap.set("n", "<Tab>", function() require("jira").toggle_node() end, opts)
+  vim.keymap.set("n", "<CR>", function() require("jira").handle_cr() end, opts)
 
-    -- View switching
-    vim.keymap.set("n", "S", function() require("jira").load_view(state.project_key, "Active Sprint") end, opts)
-    vim.keymap.set("n", "J", function() require("jira").load_view(state.project_key, "JQL") end, opts)
-    vim.keymap.set("n", "H", function() require("jira").load_view(state.project_key, "Help") end, opts)
+  -- View switching
+  vim.keymap.set("n", "S", function() require("jira").load_view(state.project_key, "Active Sprint") end, opts)
+  vim.keymap.set("n", "J", function()
+    if state.current_view == "JQL" then
+      require("jira").cycle_jql_query()
+    else
+      require("jira").load_view(state.project_key, "JQL")
+    end
+  end, opts)
+  vim.keymap.set("n", "H", function() require("jira").load_view(state.project_key, "Help") end, opts)
 
-    -- Quick Actions
-    vim.keymap.set("n", "K", function() require("jira").show_issue_details() end, opts)
-    vim.keymap.set("n", "m", function() require("jira").read_task() end, opts)
-    vim.keymap.set("n", "gx", function() require("jira").open_in_browser() end, opts)
-    vim.keymap.set("n", "r", function()
-      local cache_key = get_cache_key(state.project_key, state.current_view)
-      state.cache[cache_key] = nil
-      require("jira").load_view(state.project_key, state.current_view)
-    end, opts)
-
-    -- Mode switching
-    vim.keymap.set("n", "a", function() require("jira").set_mode("Action") end, opts)
-  
-  elseif state.mode == "Action" then
-    -- Issue Actions
-    vim.keymap.set("n", "s", function() vim.notify("Update Status - Coming soon") end, opts)
-    vim.keymap.set("n", "c", function() vim.notify("Add Comment - Coming soon") end, opts)
-    vim.keymap.set("n", "l", function() vim.notify("Log Time - Coming soon") end, opts)
-    vim.keymap.set("n", "e", function() vim.notify("Edit Issue - Coming soon") end, opts)
-
-    -- Mode switching
-    vim.keymap.set("n", "a", function() require("jira").set_mode("Normal") end, opts)
-    vim.keymap.set("n", "<Esc>", function() require("jira").set_mode("Normal") end, opts)
-  end
-end
-
-M.set_mode = function(mode)
-  state.mode = mode
-  render.clear(state.buf)
-  if state.current_view == "Help" then
-    render.render_help(state.current_view)
-  else
-    render.render_issue_tree(state.tree, state.current_view)
-  end
-  M.setup_keymaps()
+  -- Issue Actions
+  vim.keymap.set("n", "K", function() require("jira").show_issue_details() end, opts)
+  vim.keymap.set("n", "m", function() require("jira").read_task() end, opts)
+  vim.keymap.set("n", "gx", function() require("jira").open_in_browser() end, opts)
+  vim.keymap.set("n", "s", function() require("jira").change_status() end, opts)
 end
 
 M.load_view = function(project_key, view_name)
@@ -250,6 +230,59 @@ M.show_issue_details = function()
   if not node then return end
 
   ui.show_issue_details_popup(node)
+end
+
+M.change_status = function()
+  local cursor = api.nvim_win_get_cursor(state.win)
+  local row = cursor[1] - 1
+  local node = state.line_map[row]
+  if not node or not node.key then return end
+
+  ui.start_loading("Fetching transitions for " .. node.key .. "...")
+  local jira_api = require("jira.jira-api.api")
+  jira_api.get_transitions(node.key, function(transitions, err)
+    vim.schedule(function()
+      ui.stop_loading()
+      if err then
+        vim.notify("Error fetching transitions: " .. err, vim.log.levels.ERROR)
+        return
+      end
+
+      if #transitions == 0 then
+        vim.notify("No available transitions for " .. node.key, vim.log.levels.WARN)
+        return
+      end
+
+      local choices = {}
+      local id_map = {}
+      for _, t in ipairs(transitions) do
+        table.insert(choices, t.name)
+        id_map[t.name] = t.id
+      end
+
+      vim.ui.select(choices, { prompt = "Select Status for " .. node.key .. ":" }, function(choice)
+        if not choice then return end
+        local transition_id = id_map[choice]
+
+        ui.start_loading("Updating status to " .. choice .. "...")
+        jira_api.transition_issue(node.key, transition_id, function(success, t_err)
+          vim.schedule(function()
+            ui.stop_loading()
+            if t_err then
+              vim.notify("Error updating status: " .. t_err, vim.log.levels.ERROR)
+              return
+            end
+
+            vim.notify("Updated " .. node.key .. " to " .. choice, vim.log.levels.INFO)
+            -- Clear cache and reload view
+            local cache_key = get_cache_key(state.project_key, state.current_view)
+            state.cache[cache_key] = nil
+            M.load_view(state.project_key, state.current_view)
+          end)
+        end)
+      end)
+    end)
+  end)
 end
 
 M.read_task = function()
