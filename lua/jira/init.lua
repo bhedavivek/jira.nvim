@@ -264,10 +264,7 @@ M.change_status = function()
             end
 
             vim.notify("Updated " .. node.key .. " to " .. choice, vim.log.levels.INFO)
-            -- Clear cache and reload view
-            local cache_key = helper.get_cache_key(state.project_key, state.current_view)
-            state.cache[cache_key] = nil
-            M.load_view(state.project_key, state.current_view)
+            M.refresh_view()
           end)
         end)
       end)
@@ -304,9 +301,7 @@ M.change_assignee = function()
                 return
               end
               vim.notify("Assigned " .. node.key .. " to you", vim.log.levels.INFO)
-              local cache_key = helper.get_cache_key(state.project_key, state.current_view)
-              state.cache[cache_key] = nil
-              M.load_view(state.project_key, state.current_view)
+              M.refresh_view()
             end)
           end)
         end)
@@ -321,9 +316,7 @@ M.change_assignee = function()
             return
           end
           vim.notify("Unassigned " .. node.key, vim.log.levels.INFO)
-          local cache_key = helper.get_cache_key(state.project_key, state.current_view)
-          state.cache[cache_key] = nil
-          M.load_view(state.project_key, state.current_view)
+          M.refresh_view()
         end)
       end)
     end
