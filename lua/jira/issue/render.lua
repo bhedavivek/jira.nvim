@@ -1,14 +1,15 @@
-local M = {}
-local api = vim.api
 local state = require("jira.issue.state")
 local util = require("jira.common.util")
 local config = require("jira.common.config")
 
+---@class Jira.Issue.Render
+local M = {}
+
 function M.render_header()
   local tabs = {
     { name = "Description", key = "D", id = "description" },
-    { name = "Comments",    key = "C", id = "comments" },
-    { name = "Help",        key = "H", id = "help" },
+    { name = "Comments", key = "C", id = "comments" },
+    { name = "Help", key = "H", id = "help" },
   }
 
   local header = "  "
@@ -16,8 +17,8 @@ function M.render_header()
 
   for _, tab in ipairs(tabs) do
     local is_active = (state.active_tab == tab.id)
-    local tab_str = string.format(" %s (%s) ", tab.name, tab.key)
-    local start_col = #header
+    local tab_str = (" %s (%s) "):format(tab.name, tab.key)
+    local start_col = header:len()
     header = header .. tab_str .. "  "
 
     table.insert(hls, {
@@ -28,46 +29,48 @@ function M.render_header()
     })
   end
 
-  local lines = { header, string.rep("─", 40), "" }
+  local lines = { header, ("─"):rep(40), "" }
 
   -- Add issue summary header
   local fields = state.issue.fields or {}
   table.insert(lines, "# " .. state.issue.key .. ": " .. (fields.summary or ""))
   table.insert(lines, "")
 
-  api.nvim_buf_set_option(state.buf, "modifiable", true)
-  api.nvim_buf_set_lines(state.buf, 0, -1, false, lines)
-  api.nvim_buf_set_option(state.buf, "modifiable", false)
+  vim.api.nvim_set_option_value("modifiable", true, { buf = state.buf })
+  vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, lines)
+  vim.api.nvim_set_option_value("modifiable", false, { buf = state.buf })
 
-  local ns = api.nvim_create_namespace("JiraTaskView")
-  api.nvim_buf_clear_namespace(state.buf, ns, 0, -1)
+  local ns = vim.api.nvim_create_namespace("JiraTaskView")
+  vim.api.nvim_buf_clear_namespace(state.buf, ns, 0, -1)
 
   for _, h in ipairs(hls) do
-    api.nvim_buf_set_extmark(state.buf, ns, h.row, h.start_col, {
+    vim.api.nvim_buf_set_extmark(state.buf, ns, h.row, h.start_col, {
       end_col = h.end_col,
       hl_group = h.hl,
     })
   end
-  
+
   return #lines
 end
 
 function M.render_content()
-  if not state.buf or not api.nvim_buf_is_valid(state.buf) then return end
-  
-  api.nvim_buf_set_option(state.buf, "modifiable", true)
-  api.nvim_buf_set_lines(state.buf, 0, -1, false, {})
-  api.nvim_buf_set_option(state.buf, "modifiable", false)
+  if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
+    return
+  end
+
+  vim.api.nvim_set_option_value("modifiable", true, { buf = state.buf })
+  vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, {})
+  vim.api.nvim_set_option_value("modifiable", false, { buf = state.buf })
 
   local start_row = M.render_header()
   local lines = {}
   local hls = {}
 
   local fields = state.issue.fields or {}
-  
+
   if state.active_tab == "description" then
     table.insert(lines, "**Status**: " .. (fields.status and fields.status.name or "Unknown"))
-    
+
     local assignee_name = "Unassigned"
     if fields.assignee and fields.assignee ~= vim.NIL and fields.assignee.displayName then
       assignee_name = fields.assignee.displayName
@@ -100,7 +103,6 @@ function M.render_content()
         end
       end
     end
-
   elseif state.active_tab == "comments" then
     if #state.comments == 0 then
       table.insert(lines, "_No comments_")
@@ -123,7 +125,6 @@ function M.render_content()
         table.insert(lines, "")
       end
     end
-
   elseif state.active_tab == "help" then
     local help_content = {
       { section = "Navigation" },
@@ -131,7 +132,7 @@ function M.render_content()
       { k = "C", d = "Switch to Comments" },
       { k = "H", d = "Switch to Help" },
       { k = "q", d = "Close Window" },
-      
+
       { section = "Actions" },
       { k = "c", d = "Add Comment (in Comments tab)" },
     }
@@ -142,8 +143,7 @@ function M.render_content()
         table.insert(lines, "  " .. item.section .. ":")
         table.insert(hls, { row = start_row + #lines - 1, start_col = 2, hl = "Title" })
       else
-        local line = string.format("    %-6s %s", item.k, item.d)
-        table.insert(lines, line)
+        table.insert(lines, ("    %-6s %s"):format(item.k, item.d))
         local buf_row = start_row + #lines - 1
 
         table.insert(hls, {
@@ -156,15 +156,17 @@ function M.render_content()
     end
   end
 
-  api.nvim_buf_set_option(state.buf, "modifiable", true)
-  api.nvim_buf_set_lines(state.buf, start_row, -1, false, lines)
-  api.nvim_buf_set_option(state.buf, "modifiable", false)
+  vim.api.nvim_set_option_value("modifiable", true, { buf = state.buf })
+  vim.api.nvim_buf_set_lines(state.buf, start_row, -1, false, lines)
+  vim.api.nvim_set_option_value("modifiable", false, { buf = state.buf })
 
-  local ns = api.nvim_create_namespace("JiraTaskView")
+  local ns = vim.api.nvim_create_namespace("JiraTaskView")
   for _, h in ipairs(hls) do
     local opts = { hl_group = h.hl }
-    if h.end_col then opts.end_col = h.end_col end
-    api.nvim_buf_set_extmark(state.buf, ns, h.row, h.start_col, opts)
+    if h.end_col then
+      opts.end_col = h.end_col
+    end
+    vim.api.nvim_buf_set_extmark(state.buf, ns, h.row, h.start_col, opts)
   end
 end
 

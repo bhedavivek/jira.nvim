@@ -1,10 +1,13 @@
+---@class Jira.Command
 local M = {}
 
-M.SUBCOMMANDS = {"info"}
+---@type string[]
+M.SUBCOMMANDS = { "info" }
 
-M.execute = function(args)
+---@param args string
+function M.execute(args)
   local parts = {}
-  for part in string.gmatch(args, "%S+") do
+  for part in args:gmatch("%S+") do
     table.insert(parts, part)
   end
 
@@ -36,4 +39,3 @@ M.execute = function(args)
 end
 
 return M
-

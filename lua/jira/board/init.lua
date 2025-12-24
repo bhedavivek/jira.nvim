@@ -9,13 +9,13 @@ local helper = require("jira.board.helper")
 local sprint = require("jira.jira-api.sprint")
 local ui = require("jira.common.ui")
 
-M.refresh_view = function()
+function M.refresh_view()
   local cache_key = helper.get_cache_key(state.project_key, state.current_view)
   state.cache[cache_key] = nil
   M.load_view(state.project_key, state.current_view)
 end
 
-M.toggle_node = function()
+function M.toggle_node()
   local cursor = api.nvim_win_get_cursor(state.win)
   local node = helper.get_node_at_cursor()
 
@@ -32,7 +32,7 @@ M.toggle_node = function()
   end
 end
 
-M.get_query_names = function()
+function M.get_query_names()
   local queries = config.options.queries or {}
   local names = {}
   for name, _ in pairs(queries) do
@@ -42,7 +42,7 @@ M.get_query_names = function()
   return names
 end
 
-M.handle_cr = function()
+function M.handle_cr()
   local cursor = api.nvim_win_get_cursor(state.win)
   local row = cursor[1] - 1
 
@@ -63,7 +63,7 @@ M.handle_cr = function()
   M.toggle_node()
 end
 
-M.prompt_jql = function()
+function M.prompt_jql()
   ui.open_jql_input(state.custom_jql or "", function(input)
     state.custom_jql = input
     state.current_query = "Custom JQL"
@@ -71,19 +71,21 @@ M.prompt_jql = function()
   end)
 end
 
-M.switch_query = function(query_name)
+function M.switch_query(query_name)
   local queries = config.options.queries or {}
   state.current_query = query_name
 
   local jql = queries[query_name]
-  state.custom_jql = string.format(jql, state.project_key)
+  state.custom_jql = jql:format(state.project_key)
 
   M.load_view(state.project_key, "JQL")
 end
 
-M.cycle_jql_query = function()
+function M.cycle_jql_query()
   local query_names = M.get_query_names()
-  if #query_names == 0 then return end
+  if #query_names == 0 then
+    return
+  end
 
   local current_idx = 0
   for i, name in ipairs(query_names) do
@@ -97,7 +99,7 @@ M.cycle_jql_query = function()
   M.switch_query(query_names[next_idx])
 end
 
-M.setup_keymaps = function()
+function M.setup_keymaps()
   local opts = { noremap = true, silent = true, buffer = state.buf }
 
   -- Clear existing buffer keymaps
@@ -113,14 +115,22 @@ M.setup_keymaps = function()
     end
   end, opts)
 
-  vim.keymap.set("n", "r", function() require("jira.board").refresh_view() end, opts)
+  vim.keymap.set("n", "r", function()
+    require("jira.board").refresh_view()
+  end, opts)
 
   -- Navigation
-  vim.keymap.set("n", "<Tab>", function() require("jira.board").toggle_node() end, opts)
-  vim.keymap.set("n", "<CR>", function() require("jira.board").handle_cr() end, opts)
+  vim.keymap.set("n", "<Tab>", function()
+    require("jira.board").toggle_node()
+  end, opts)
+  vim.keymap.set("n", "<CR>", function()
+    require("jira.board").handle_cr()
+  end, opts)
 
   -- View switching
-  vim.keymap.set("n", "S", function() require("jira.board").load_view(state.project_key, "Active Sprint") end, opts)
+  vim.keymap.set("n", "S", function()
+    require("jira.board").load_view(state.project_key, "Active Sprint")
+  end, opts)
   vim.keymap.set("n", "J", function()
     if state.current_view == "JQL" then
       require("jira.board").cycle_jql_query()
@@ -128,18 +138,32 @@ M.setup_keymaps = function()
       require("jira.board").load_view(state.project_key, "JQL")
     end
   end, opts)
-  vim.keymap.set("n", "H", function() require("jira.board").load_view(state.project_key, "Help") end, opts)
+  vim.keymap.set("n", "H", function()
+    require("jira.board").load_view(state.project_key, "Help")
+  end, opts)
 
   -- Issue Actions
-  vim.keymap.set("n", "K", function() require("jira.board").show_issue_details() end, opts)
-  vim.keymap.set("n", "m", function() require("jira.board").read_task() end, opts)
-  vim.keymap.set("n", "gx", function() require("jira.board").open_in_browser() end, opts)
-  vim.keymap.set("n", "s", function() require("jira.board").change_status() end, opts)
-  vim.keymap.set("n", "a", function() require("jira.board").change_assignee() end, opts)
-  vim.keymap.set("n", "t", function() require("jira.board").log_time() end, opts)
+  vim.keymap.set("n", "K", function()
+    require("jira.board").show_issue_details()
+  end, opts)
+  vim.keymap.set("n", "m", function()
+    require("jira.board").read_task()
+  end, opts)
+  vim.keymap.set("n", "gx", function()
+    require("jira.board").open_in_browser()
+  end, opts)
+  vim.keymap.set("n", "s", function()
+    require("jira.board").change_status()
+  end, opts)
+  vim.keymap.set("n", "a", function()
+    require("jira.board").change_assignee()
+  end, opts)
+  vim.keymap.set("n", "t", function()
+    require("jira.board").log_time()
+  end, opts)
 end
 
-M.load_view = function(project_key, view_name)
+function M.load_view(project_key, view_name)
   state.project_key = project_key
   state.current_view = view_name
 
@@ -163,7 +187,7 @@ M.load_view = function(project_key, view_name)
     if #query_names > 0 then
       state.current_query = query_names[1]
       local queries = config.options.queries or {}
-      state.custom_jql = string.format(queries[state.current_query], project_key)
+      state.custom_jql = queries[state.current_query]:format(project_key)
     else
       state.current_query = "Custom JQL"
     end
@@ -209,9 +233,13 @@ M.load_view = function(project_key, view_name)
 
   local fetch_fn
   if view_name == "Active Sprint" then
-    fetch_fn = function(pk, cb) sprint.get_active_sprint_issues(pk, cb) end
+    fetch_fn = function(pk, cb)
+      sprint.get_active_sprint_issues(pk, cb)
+    end
   elseif view_name == "JQL" then
-    fetch_fn = function(pk, cb) sprint.get_issues_by_jql(pk, state.custom_jql, cb) end
+    fetch_fn = function(pk, cb)
+      sprint.get_issues_by_jql(pk, state.custom_jql, cb)
+    end
   end
 
   fetch_fn(project_key, function(issues, err)
@@ -228,16 +256,20 @@ M.load_view = function(project_key, view_name)
   end)
 end
 
-M.show_issue_details = function()
+function M.show_issue_details()
   local node = helper.get_node_at_cursor()
-  if not node then return end
+  if not node then
+    return
+  end
 
   ui.show_issue_details_popup(node)
 end
 
-M.change_status = function()
+function M.change_status()
   local node = helper.get_node_at_cursor()
-  if not node or not node.key then return end
+  if not node or not node.key then
+    return
+  end
 
   ui.start_loading("Fetching transitions for " .. node.key .. "...")
   local jira_api = require("jira.jira-api.api")
@@ -262,11 +294,13 @@ M.change_status = function()
       end
 
       vim.ui.select(choices, { prompt = "Select Status for " .. node.key .. ":" }, function(choice)
-        if not choice then return end
+        if not choice then
+          return
+        end
         local transition_id = id_map[choice]
 
         ui.start_loading("Updating status to " .. choice .. "...")
-        jira_api.transition_issue(node.key, transition_id, function(success, t_err)
+        jira_api.transition_issue(node.key, transition_id, function(_, t_err)
           vim.schedule(function()
             ui.stop_loading()
             if t_err then
@@ -283,15 +317,19 @@ M.change_status = function()
   end)
 end
 
-M.change_assignee = function()
+function M.change_assignee()
   local node = helper.get_node_at_cursor()
-  if not node or not node.key then return end
+  if not node or not node.key then
+    return
+  end
 
   local jira_api = require("jira.jira-api.api")
   local choices = { "Assign to Me", "Unassign" }
 
   vim.ui.select(choices, { prompt = "Change Assignee for " .. node.key .. ":" }, function(choice)
-    if not choice then return end
+    if not choice then
+      return
+    end
 
     if choice == "Assign to Me" then
       ui.start_loading("Fetching your account info...")
@@ -304,7 +342,7 @@ M.change_assignee = function()
           end
 
           ui.start_loading("Assigning " .. node.key .. " to you...")
-          jira_api.assign_issue(node.key, me.accountId, function(success, a_err)
+          jira_api.assign_issue(node.key, me.accountId, function(_, a_err)
             vim.schedule(function()
               ui.stop_loading()
               if a_err then
@@ -334,30 +372,40 @@ M.change_assignee = function()
   end)
 end
 
-M.read_task = function()
+function M.read_task()
   local node = helper.get_node_at_cursor()
-  if not node or not node.key then return end
+  if not node or not node.key then
+    return
+  end
 
   require("jira.issue").open(node.key)
 end
 
-M.log_time = function()
+function M.log_time()
   local node = helper.get_node_at_cursor()
-  if not node or not node.key then return end
+  if not node or not node.key then
+    return
+  end
 
   local jira_api = require("jira.jira-api.api")
 
   vim.ui.input({ prompt = "Add time for " .. node.key .. " (h):" }, function(value)
-    if not value then return end
+    if not value then
+      return
+    end
     value = util.strim(value)
-    if value == "" then return end
-    if value == "0" then return end
+    if value == "" then
+      return
+    end
+    if value == "0" then
+      return
+    end
 
     local time_string = value .. "h"
 
     vim.ui.input({ prompt = "Comment (optional): " }, function(comment)
       ui.start_loading("Updating time log...")
-      jira_api.add_worklog(node.key, time_string, comment, function(success, err)
+      jira_api.add_worklog(node.key, time_string, comment, function(_, err)
         vim.schedule(function()
           ui.stop_loading()
           if err then
@@ -372,9 +420,11 @@ M.log_time = function()
   end)
 end
 
-M.open_in_browser = function()
+function M.open_in_browser()
   local node = helper.get_node_at_cursor()
-  if not node or not node.key then return end
+  if not node or not node.key then
+    return
+  end
 
   local base = config.options.jira.base
   if not base or base == "" then
@@ -390,7 +440,7 @@ M.open_in_browser = function()
   vim.ui.open(url)
 end
 
-M.open = function(project_key)
+function M.open(project_key)
   -- If already open, just focus
   if state.win and api.nvim_win_is_valid(state.win) then
     api.nvim_set_current_win(state.win)

@@ -1,5 +1,3 @@
-local M = {}
-local api = vim.api
 local state = require("jira.issue.state")
 local render = require("jira.issue.render")
 local jira_api = require("jira.jira-api.api")
@@ -10,8 +8,8 @@ local function setup_keymaps()
 
   -- Quit
   vim.keymap.set("n", "q", function()
-    if state.win and api.nvim_win_is_valid(state.win) then
-      api.nvim_win_close(state.win, true)
+    if state.win and vim.api.nvim_win_is_valid(state.win) then
+      vim.api.nvim_win_close(state.win, true)
     end
   end, opts)
 
@@ -21,7 +19,7 @@ local function setup_keymaps()
     state.active_tab = next_tab[state.active_tab] or "description"
     render.render_content()
   end, opts)
-  
+
   vim.keymap.set("n", "D", function()
     state.active_tab = "description"
     render.render_content()
@@ -44,29 +42,31 @@ local function setup_keymaps()
       return
     end
 
-    vim.ui.input({ prompt = "Comment: " }, function(input) 
-      if not input or input == "" then return end
-      
+    vim.ui.input({ prompt = "Comment: " }, function(input)
+      if not input or input == "" then
+        return
+      end
+
       ui.start_loading("Adding comment...")
-      jira_api.add_comment(state.issue.key, input, function(success, err) 
+      jira_api.add_comment(state.issue.key, input, function(_, err)
         vim.schedule(function()
           ui.stop_loading()
           if err then
             vim.notify("Error adding comment: " .. err, vim.log.levels.ERROR)
             return
           end
-          
+
           -- Refresh comments
           ui.start_loading("Refreshing comments...")
-          jira_api.get_comments(state.issue.key, function(comments, c_err) 
-             vim.schedule(function()
-                ui.stop_loading()
-                if not c_err then
-                   state.comments = comments
-                   render.render_content()
-                   vim.notify("Comment added.", vim.log.levels.INFO)
-                end
-             end)
+          jira_api.get_comments(state.issue.key, function(comments, c_err)
+            vim.schedule(function()
+              ui.stop_loading()
+              if not c_err then
+                state.comments = comments
+                render.render_content()
+                vim.notify("Comment added.", vim.log.levels.INFO)
+              end
+            end)
           end)
         end)
       end)
@@ -74,9 +74,14 @@ local function setup_keymaps()
   end, opts)
 end
 
+---@class Jira.Issue
+local M = {}
+
+---@param issue_key string
+---@param initial_tab? string
 function M.open(issue_key, initial_tab)
   ui.start_loading("Fetching task " .. issue_key .. "...")
-  
+
   -- Reset state
   state.issue = nil
   state.comments = {}
@@ -84,7 +89,7 @@ function M.open(issue_key, initial_tab)
   state.buf = nil
   state.win = nil
 
-  jira_api.get_issue(issue_key, function(issue, err) 
+  jira_api.get_issue(issue_key, function(issue, err)
     if err then
       vim.schedule(function()
         ui.stop_loading()
@@ -93,27 +98,27 @@ function M.open(issue_key, initial_tab)
       return
     end
 
-    jira_api.get_comments(issue_key, function(comments, c_err) 
+    jira_api.get_comments(issue_key, function(comments, c_err)
       vim.schedule(function()
         ui.stop_loading()
         if c_err then
           vim.notify("Error fetching comments: " .. c_err, vim.log.levels.WARN)
         end
-        
+
         state.issue = issue
         state.comments = comments or {}
-        
+
         -- Create UI
-        local buf = api.nvim_create_buf(false, true)
-        api.nvim_buf_set_option(buf, "filetype", "markdown")
-        api.nvim_buf_set_option(buf, "buftype", "nofile")
-        api.nvim_buf_set_option(buf, "bufhidden", "wipe")
-        api.nvim_buf_set_name(buf, "Jira: " .. issue.key)
+        local buf = vim.api.nvim_create_buf(false, true)
+        vim.api.nvim_buf_set_option_value("filetype", "markdown", { buf = buf })
+        vim.api.nvim_buf_set_option_value("buftype", "nofile", { buf = buf })
+        vim.api.nvim_buf_set_option_value("bufhidden", "wipe", { buf = buf })
+        vim.api.nvim_buf_set_name(buf, "Jira: " .. issue.key)
 
         local width = math.floor(vim.o.columns * 0.8)
         local height = math.floor(vim.o.lines * 0.8)
-        
-        local win = api.nvim_open_win(buf, true, {
+
+        local win = vim.api.nvim_open_win(buf, true, {
           relative = "editor",
           width = width,
           height = height,
@@ -125,7 +130,7 @@ function M.open(issue_key, initial_tab)
 
         state.buf = buf
         state.win = win
-        
+
         render.render_content()
         setup_keymaps()
       end)

@@ -1,9 +1,11 @@
+---@class Jira
 local M = {}
 
 local config = require("jira.common.config")
 local command = require("jira.command")
 
-local function complete(arg_lead, cmd_line, cursor_pos)
+---@param cmd_line string
+local function complete(_, cmd_line, _)
   local args = vim.split(cmd_line, "%s+", { trimempty = true })
   if #args <= 1 then
     return command.SUBCOMMANDS
@@ -12,16 +14,17 @@ local function complete(arg_lead, cmd_line, cursor_pos)
   return {}
 end
 
-M.setup = function(opts)
+---@param opts JiraConfig
+function M.setup(opts)
   config.setup(opts)
 
-  vim.api.nvim_create_user_command("Jira", function(opts)
-    command.execute(opts.args)
+  vim.api.nvim_create_user_command("Jira", function(ctx)
+    command.execute(ctx.args)
   end, {
     nargs = "*",
     bang = true,
     complete = complete,
-    desc = "Jira view: :Jira [<PROJECT_KEY>] | info <ISSUE_KEY>"
+    desc = "Jira view: :Jira [<PROJECT_KEY>] | info <ISSUE_KEY>",
   })
 end
 
