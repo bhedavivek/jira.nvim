@@ -25,8 +25,7 @@ Helpers.new_child_neovim = function()
       return
     end
 
-    local msg =
-        string.format("Can not use `child.%s` because child process is blocked.", method)
+    local msg = string.format("Can not use `child.%s` because child process is blocked.", method)
     error(msg)
   end
 

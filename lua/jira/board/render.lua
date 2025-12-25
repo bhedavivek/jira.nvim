@@ -269,8 +269,8 @@ end
 local function render_header(view)
   local tabs = {
     { name = "Active Sprint", key = "S" },
-    { name = "JQL",           key = "J" },
-    { name = "Help",          key = "H" },
+    { name = "JQL", key = "J" },
+    { name = "Help", key = "H" },
   }
 
   local header = "  "
@@ -338,8 +338,8 @@ local function render_header(view)
       row = sq_row,
       start_col = 0,
       virt_text = {
-        { "(Press ",     "JiraHelp" },
-        { "<CR>",        "JiraKey" },
+        { "(Press ", "JiraHelp" },
+        { "<CR>", "JiraKey" },
         { " to apply) ", "JiraHelp" },
       },
       virt_text_pos = "right_align",
@@ -394,19 +394,19 @@ function M.render_help(view)
   render_header(view)
   local help_content = {
     { section = "Navigation & View" },
-    { k = "<Tab>",                  d = "Toggle Node (Expand/Collapse)" },
-    { k = "S, J, H",                d = "Switch View (Sprint, JQL, Help)" },
-    { k = "q",                      d = "Close Board" },
-    { k = "r",                      d = "Refresh current view" },
+    { k = "<Tab>", d = "Toggle Node (Expand/Collapse)" },
+    { k = "S, J, H", d = "Switch View (Sprint, JQL, Help)" },
+    { k = "q", d = "Close Board" },
+    { k = "r", d = "Refresh current view" },
 
     { section = "Issue Actions" },
-    { k = "K",                      d = "Quick Issue Details (Popup)" },
-    { k = "gd",                      d = "Read Task as info" },
-    { k = "gx",                     d = "Open Task in Browser" },
-    { k = "gs",                     d = "Update Status" },
-    { k = "ga",                     d = "Change Assignee" },
-    { k = "gw",                     d = "Add time" },
-    { k = "gb",                     d = "Checkout/Create Branch" },
+    { k = "K", d = "Quick Issue Details (Popup)" },
+    { k = "gd", d = "Read Task as info" },
+    { k = "gx", d = "Open Task in Browser" },
+    { k = "gs", d = "Update Status" },
+    { k = "ga", d = "Change Assignee" },
+    { k = "gw", d = "Add time" },
+    { k = "gb", d = "Checkout/Create Branch" },
   }
 
   local lines = { "" }

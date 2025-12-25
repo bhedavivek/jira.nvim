@@ -24,32 +24,28 @@ function M.get_status_hl(status_name)
   if name_upper:find("READY FOR DEV") or name_upper:find("READY FOR TEST") then
     color = palette[7] -- Grey
   elseif
-      name_upper:find("DONE")
-      or name_upper:find("RESOLVED")
-      or name_upper:find("CLOSED")
-      or name_upper:find("FINISHED")
+    name_upper:find("DONE")
+    or name_upper:find("RESOLVED")
+    or name_upper:find("CLOSED")
+    or name_upper:find("FINISHED")
   then
     color = palette[1] -- Green
   elseif name_upper:find("DEVELOPMENT") then
     color = palette[6] -- Cyan
-  elseif
-      name_upper:find("PROGRESS")
-      or name_upper:find("BUILDING")
-      or name_upper:find("WORKING")
-  then
+  elseif name_upper:find("PROGRESS") or name_upper:find("BUILDING") or name_upper:find("WORKING") then
     color = palette[3] -- Yellow
   elseif
-      name_upper:find("TODO")
-      or name_upper:find("TO DO")
-      or name_upper:find("OPEN")
-      or name_upper:find("BACKLOG")
+    name_upper:find("TODO")
+    or name_upper:find("TO DO")
+    or name_upper:find("OPEN")
+    or name_upper:find("BACKLOG")
   then
     color = palette[2] -- Blue
   elseif
-      name_upper:find("BLOCK")
-      or name_upper:find("REJECT")
-      or name_upper:find("BUG")
-      or name_upper:find("ERROR")
+    name_upper:find("BLOCK")
+    or name_upper:find("REJECT")
+    or name_upper:find("BUG")
+    or name_upper:find("ERROR")
   then
     color = palette[4] -- Red
   elseif name_upper:find("REVIEW") or name_upper:find("QA") or name_upper:find("TEST") then

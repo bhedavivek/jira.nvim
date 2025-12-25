@@ -99,7 +99,7 @@ local function parse_adf(node)
         em = "_" .. text .. "_",
         code = "`" .. text .. "`",
         strike = "~~" .. text .. "~~",
-        link = ("[%s](%s)"):format(text, mark.attrs and mark.attrs.href or "")
+        link = ("[%s](%s)"):format(text, mark.attrs and mark.attrs.href or ""),
       }
 
       if vim.list_contains(vim.tbl_keys(valid_marks), mark.type) then
@@ -211,7 +211,10 @@ function M.parse_inline_markdown(text)
       local match = text:sub(start_idx, end_idx)
       local link_text = match:match("%[(.-)%]")
       local link_url = match:match("%((.-)%)")
-      table.insert(nodes, { type = "text", text = link_text, marks = { { type = "link", attrs = { href = link_url } } } })
+      table.insert(
+        nodes,
+        { type = "text", text = link_text, marks = { { type = "link", attrs = { href = link_url } } } }
+      )
     end
 
     pos = end_idx + 1
@@ -230,7 +233,7 @@ function M.markdown_to_adf(text)
   local doc = {
     type = "doc",
     version = 1,
-    content = {}
+    content = {},
   }
 
   local lines = vim.split(text, "\n")
@@ -279,13 +282,13 @@ end
 
 function M.get_palette()
   return {
-    M.get_theme_color({ "DiagnosticOk", "String", "DiffAdd" }, "fg") or "#a6e3a1",         -- Green
-    M.get_theme_color({ "DiagnosticInfo", "Function", "DiffChange" }, "fg") or "#89b4fa",  -- Blue
-    M.get_theme_color({ "DiagnosticWarn", "WarningMsg", "Todo" }, "fg") or "#f9e2af",      -- Yellow
+    M.get_theme_color({ "DiagnosticOk", "String", "DiffAdd" }, "fg") or "#a6e3a1", -- Green
+    M.get_theme_color({ "DiagnosticInfo", "Function", "DiffChange" }, "fg") or "#89b4fa", -- Blue
+    M.get_theme_color({ "DiagnosticWarn", "WarningMsg", "Todo" }, "fg") or "#f9e2af", -- Yellow
     M.get_theme_color({ "DiagnosticError", "ErrorMsg", "DiffDelete" }, "fg") or "#f38ba8", -- Red
-    M.get_theme_color({ "Special", "Constant" }, "fg") or "#cba6f7",                       -- Magenta
-    M.get_theme_color({ "Identifier", "PreProc" }, "fg") or "#89dceb",                     -- Cyan
-    M.get_theme_color({ "Cursor", "CursorIM" }, "fg") or "#524f67",                        -- Grey
+    M.get_theme_color({ "Special", "Constant" }, "fg") or "#cba6f7", -- Magenta
+    M.get_theme_color({ "Identifier", "PreProc" }, "fg") or "#89dceb", -- Cyan
+    M.get_theme_color({ "Cursor", "CursorIM" }, "fg") or "#524f67", -- Grey
   }
 end
 
