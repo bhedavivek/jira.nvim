@@ -29,7 +29,7 @@ function M.execute(args)
       tab = "comments"
     end
 
-    issue_view.open(key, tab)
+    issue_view.open(key:upper(), tab)
     return
   end
 
@@ -42,20 +42,20 @@ function M.execute(args)
     end
 
     local issue_edit = require("jira.edit")
-    issue_edit.open(key)
+    issue_edit.open(key:upper())
     return
   end
 
   if cmd == "create" then
     local project_key = parts[2]
-    require("jira.create").open(project_key)
+    require("jira.create").open(project_key:upper())
     return
   end
 
   -- Default: Open Board
   -- Usage: :Jira [project-key]
   local project_key = parts[1]
-  require("jira.board").open(project_key)
+  require("jira.board").open(project_key:upper())
 end
 
 return M
