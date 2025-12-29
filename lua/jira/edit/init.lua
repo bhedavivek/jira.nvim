@@ -63,7 +63,7 @@ local function render()
 
   local lines = render_issue_as_md(state.issue)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  
+
   -- Add virtual text for instructions
   local ns = vim.api.nvim_create_namespace("JiraEdit")
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
@@ -135,8 +135,8 @@ local function on_save()
     fields.priority = { name = priority }
   end
 
-  -- We don't update assignee here because it usually needs accountId 
-  -- and names can be ambiguous. Keeping it read-only or adding a 
+  -- We don't update assignee here because it usually needs accountId
+  -- and names can be ambiguous. Keeping it read-only or adding a
   -- check for "Unassigned" to clear it.
   if assignee_text and assignee_text:lower() == "unassigned" then
     fields.assignee = { accountId = nil }
@@ -178,6 +178,20 @@ local function on_save()
         state.issue.fields.timeoriginalestimate = nil
         state.issue.fields.aggregatetimeoriginalestimate = nil
       end
+
+      -- Refresh board if available
+      vim.defer_fn(function()
+        pcall(function()
+          require("jira.board").refresh_view()
+        end)
+      end, 1000)
+
+      -- Refresh issue detail window if open
+      vim.defer_fn(function()
+        pcall(function()
+          require("jira.issue").refresh()
+        end)
+      end, 500)
     end
   end)
 end
@@ -226,6 +240,8 @@ function M.open(issue_key)
       col = (vim.o.columns - width) / 2,
       style = "minimal",
       border = "rounded",
+      title = " Edit Issue: " .. issue.key .. " (Save to update) ",
+      title_pos = "center",
     })
 
     state.buf = buf

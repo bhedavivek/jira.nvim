@@ -247,6 +247,8 @@ function M.open(issue_key, initial_tab)
           col = (vim.o.columns - width) / 2,
           style = "minimal",
           border = "rounded",
+          title = " " .. issue.key .. " ",
+          title_pos = "center",
         })
 
         state.buf = buf
@@ -259,5 +261,37 @@ function M.open(issue_key, initial_tab)
   end)
 end
 
+function M.refresh()
+  if not state.issue or not state.issue.key then
+    return
+  end
+
+  common_ui.start_loading("Refreshing issue " .. state.issue.key .. "...")
+
+  jira_api.get_issue(state.issue.key, function(updated_issue, err)
+    if err then
+      vim.schedule(function()
+        common_ui.stop_loading()
+        vim.notify("Error refreshing issue: " .. err, vim.log.levels.ERROR)
+      end)
+      return
+    end
+
+    jira_api.get_comments(state.issue.key, function(comments, c_err)
+      vim.schedule(function()
+        common_ui.stop_loading()
+        if not c_err then
+          state.comments = comments or {}
+        end
+
+        state.issue = updated_issue
+        render.render_content()
+        vim.notify("Issue refreshed", vim.log.levels.INFO)
+      end)
+    end)
+  end)
+end
+
 return M
 -- vim: set ts=2 sts=2 sw=2 et ai si sta:
+

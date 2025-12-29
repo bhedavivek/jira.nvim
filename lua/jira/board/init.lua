@@ -105,7 +105,7 @@ function M.setup_keymaps()
 
   -- Clear existing buffer keymaps
   local keys_to_clear =
-    { "o", "S", "B", "J", "H", "K", "m", "gx", "r", "q", "gs", "ga", "gw", "gb", "<Esc>", "s", "a", "t", "co", "i", "c" }
+    { "o", "S", "B", "J", "H", "K", "m", "gx", "r", "q", "gs", "ga", "gw", "gb", "go", "<Esc>", "s", "a", "t", "co", "i", "c" }
   for _, k in ipairs(keys_to_clear) do
     pcall(vim.api.nvim_buf_del_keymap, state.buf, "n", k)
   end
@@ -171,6 +171,9 @@ function M.setup_keymaps()
   end, opts)
   vim.keymap.set("n", "gb", function()
     require("jira.board").checkout_branch()
+  end, opts)
+  vim.keymap.set("n", "go", function()
+    require("jira.board").show_child_issues()
   end, opts)
 end
 
@@ -557,6 +560,18 @@ function M.open_in_browser()
 
   local url = base .. "browse/" .. node.key
   vim.ui.open(url)
+end
+
+function M.show_child_issues()
+  local node = helper.get_node_at_cursor()
+  if not node or not node.key then
+    return
+  end
+
+  -- Switch to JQL view and set query to find child issues
+  state.custom_jql = 'parent = "' .. node.key .. '"'
+  state.current_query = "Child Issues of " .. node.key
+  M.load_view(state.project_key, "JQL")
 end
 
 function M.open(project_key)
