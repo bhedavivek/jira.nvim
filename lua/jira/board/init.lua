@@ -10,6 +10,13 @@ local sprint = require("jira.jira-api.sprint")
 local common_ui = require("jira.common.ui")
 local board_ui = require("jira.board.ui")
 
+local function ensure_window()
+  if not state.win or not vim.api.nvim_win_is_valid(state.win) then
+    board_ui.create_window()
+    util.setup_static_highlights()
+  end
+end
+
 function M.refresh_view()
   local cache_key = helper.get_cache_key(state.project_key, state.current_view)
   state.cache[cache_key] = nil
@@ -105,7 +112,8 @@ function M.setup_keymaps()
 
   -- Clear existing buffer keymaps
   local keys_to_clear =
-    { "o", "S", "B", "J", "H", "K", "m", "gx", "r", "q", "gs", "ga", "gw", "gb", "go", "<Esc>", "s", "a", "t", "co", "i", "c" }
+  { "o", "S", "B", "J", "H", "K", "m", "gx", "r", "q", "gs", "ga", "gw", "gb", "go", "<Esc>", "s", "a", "t", "co", "i",
+    "c" }
   for _, k in ipairs(keys_to_clear) do
     pcall(vim.api.nvim_buf_del_keymap, state.buf, "n", k)
   end
@@ -178,36 +186,28 @@ function M.setup_keymaps()
 end
 
 function M.load_view(project_key, view_name)
-  local old_cursor = nil
-  if state.win and api.nvim_win_is_valid(state.win) and state.current_view == view_name then
-    old_cursor = api.nvim_win_get_cursor(state.win)
-  end
+  local old_view = helper.save_view_if_same(view_name)
 
   state.project_key = project_key
   state.current_view = view_name
 
+  -- HELP VIEW
   if view_name == "Help" then
     vim.schedule(function()
-      if not state.win or not api.nvim_win_is_valid(state.win) then
-        board_ui.create_window()
-        util.setup_static_highlights()
-      end
+      ensure_window()
+
       state.tree = {}
       state.line_map = {}
       render.clear(state.buf)
       render.render_help(view_name)
-      if old_cursor and state.win and api.nvim_win_is_valid(state.win) then
-        local line_count = api.nvim_buf_line_count(state.buf)
-        if old_cursor[1] > line_count then
-          old_cursor[1] = line_count
-        end
-        api.nvim_win_set_cursor(state.win, old_cursor)
-      end
+
+      helper.restore_view(old_view)
       M.setup_keymaps()
     end)
     return
   end
 
+  -- JQL INIT
   if view_name == "JQL" and not state.current_query then
     local query_names = M.get_query_names()
     if #query_names > 0 then
@@ -225,35 +225,23 @@ function M.load_view(project_key, view_name)
   local function process_issues(issues)
     vim.schedule(function()
       common_ui.stop_loading()
+      ensure_window()
 
-      -- Setup UI if not already created
-      if not state.win or not api.nvim_win_is_valid(state.win) then
-        board_ui.create_window()
-        util.setup_static_highlights()
-      end
+      render.clear(state.buf)
 
       if not issues or #issues == 0 then
         state.tree = {}
-        render.clear(state.buf)
         render.render_issue_tree(state.tree, state.current_view)
         vim.notify("No issues found in " .. view_name .. ".", vim.log.levels.WARN)
       else
         state.tree = util.build_issue_tree(issues)
-        render.clear(state.buf)
         render.render_issue_tree(state.tree, state.current_view)
         if not cached_issues then
           vim.notify("Loaded " .. view_name .. " for " .. project_key, vim.log.levels.INFO)
         end
       end
 
-      if old_cursor and state.win and api.nvim_win_is_valid(state.win) then
-        local line_count = api.nvim_buf_line_count(state.buf)
-        if old_cursor[1] > line_count then
-          old_cursor[1] = line_count
-        end
-        api.nvim_win_set_cursor(state.win, old_cursor)
-      end
-
+      helper.restore_view(old_view)
       M.setup_keymaps()
     end)
   end
