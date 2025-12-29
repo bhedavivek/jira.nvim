@@ -11,7 +11,15 @@ local util = require("jira.common.util")
 -- Get environment variables
 ---@return JiraAuthOptions auth_opts
 local function get_env()
-  return config.options.jira
+  local env = {}
+
+  -- Check environment variables first, fall back to config
+  env.base = os.getenv("JIRA_BASE_URL") or config.options.jira.base
+  env.email = os.getenv("JIRA_EMAIL") or config.options.jira.email
+  env.token = os.getenv("JIRA_TOKEN") or config.options.jira.token
+  env.limit = config.options.jira.limit
+
+  return env
 end
 
 -- Validate environment variables
@@ -56,7 +64,7 @@ local function curl_request(method, endpoint, data, callback)
     if f then
       f:write(json_data)
       f:close()
-      cmd = ('%s-d @%s '):format(cmd, temp_file)
+      cmd = ("%s-d @%s "):format(cmd, temp_file)
     else
       if callback and vim.is_callable(callback) then
         callback(nil, "Failed to create temp file")
@@ -89,7 +97,7 @@ local function curl_request(method, endpoint, data, callback)
       if temp_file then
         os.remove(temp_file)
       end
-      
+
       if code ~= 0 then
         if callback then
           callback(nil, "Curl failed: " .. table.concat(stderr, "\n"))

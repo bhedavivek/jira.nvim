@@ -84,6 +84,19 @@ require('jira').setup({
 })
 ```
 
+Alternatively, you can set Jira credentials using environment variables, which takes precedence over config:
+
+```bash
+export JIRA_BASE_URL="https://your-domain.atlassian.net"
+export JIRA_EMAIL="your-email@example.com"
+export JIRA_TOKEN="your-api-token"
+```
+
+Supported environment variables:
+- `JIRA_BASE_URL` - Base URL of your Jira instance
+- `JIRA_EMAIL` - Your Jira email
+- `JIRA_TOKEN` - Your Jira API token
+
 ---
 
 ## Usage
