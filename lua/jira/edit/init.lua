@@ -42,6 +42,13 @@ local function render_issue_as_md(issue)
   end
   table.insert(lines, ("**Estimate**: %s"):format(estimate))
 
+  -- Display labels if they exist
+  if fields.labels and type(fields.labels) == "table" and #fields.labels > 0 then
+    table.insert(lines, ("**Labels**: %s"):format(table.concat(fields.labels, ", ")))
+  else
+    table.insert(lines, "**Labels**: ")
+  end
+
   table.insert(lines, "")
   table.insert(lines, "---")
 
@@ -98,6 +105,7 @@ local function on_save()
   local story_points = nil
   local estimate = nil
   local assignee_text = nil
+  local labels = nil
 
   local desc_lines = {}
   local in_description = false
@@ -120,6 +128,9 @@ local function on_save()
 
       local est_val = line:match("^%*%*Estimate%*%*:?%s*(.*)")
       if est_val then estimate = common_util.strim(est_val) end
+
+      local labels_val = line:match("^%*%*Labels%*%*:?%s*(.*)")
+      if labels_val then labels = common_util.strim(labels_val) end
     elseif in_description then
       table.insert(desc_lines, line)
     end
@@ -150,6 +161,24 @@ local function on_save()
 
   if estimate and estimate ~= "" then
     fields.timetracking = { originalEstimate = estimate }
+  end
+
+  if labels and labels ~= "" then
+    -- Split labels by comma and trim whitespace
+    local label_list = {}
+    for label in labels:gmatch("[^,]+") do
+      label = common_util.strim(label)
+      if label ~= "" then
+        -- Validate label doesn't contain spaces
+        if label:match("%s") then
+          common_ui.stop_loading()
+          vim.notify("Label '" .. label .. "' contains spaces. Labels cannot contain spaces.", vim.log.levels.ERROR)
+          return
+        end
+        table.insert(label_list, label)
+      end
+    end
+    fields.labels = label_list
   end
 
   if in_description then
