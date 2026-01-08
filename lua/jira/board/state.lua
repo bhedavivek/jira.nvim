@@ -13,6 +13,7 @@
 ---@field cache table                -- cached API results
 ---@field query_map table<string,string> -- named queries -> JQL
 ---@field jql_line integer|nil       -- buffer line containing editable JQL
+---@field filter_my_tasks boolean    -- filter to show only current user's tasks
 
 ---@type JiraState
 local state = {
@@ -30,6 +31,7 @@ local state = {
   cache = {},
   query_map = {},
   jql_line = nil,
+  filter_my_tasks = false,
 }
 
 return state

@@ -15,6 +15,7 @@ local FALLBACKS = {
 ---@field type? "basic"|"pat" Authentication type (default: "basic")
 ---@field api_version? "2"|"3" API version to use (default: "3")
 ---@field limit? number Global limit of tasks when calling API
+---@field default_project? string Default project key when none specified
 
 ---@class JiraConfig
 ---@field jira JiraAuthOptions
@@ -29,6 +30,7 @@ M.defaults = {
     type = "basic",
     api_version = "3",
     limit = 200,
+    default_project = nil,
   },
   projects = {},
   active_sprint_query = "project = '%s' AND sprint in openSprints() ORDER BY Rank ASC",

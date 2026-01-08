@@ -244,6 +244,9 @@ function M.setup_keymaps()
   vim.keymap.set("n", "gp", function()
     require("jira.board").show_parent_issue()
   end, opts)
+  vim.keymap.set("n", "gm", function()
+    require("jira.board").toggle_my_tasks_filter()
+  end, opts)
 end
 
 function M.load_view(project_key, view_name)
@@ -251,6 +254,51 @@ function M.load_view(project_key, view_name)
 
   state.project_key = project_key
   state.current_view = view_name
+
+  -- Filter issues to current user if filter is enabled
+  local function filter_issues_if_needed(issues, callback)
+    if not state.filter_my_tasks then
+      callback(issues)
+      return
+    end
+
+    -- Get current user to filter by
+    local api = require("jira.jira-api.api")
+    api.get_myself(function(user, err)
+      if err or not user then
+        vim.notify("Could not get current user for filtering", vim.log.levels.WARN)
+        callback(issues)
+        return
+      end
+
+      local filtered = {}
+      local user_identifiers = {
+        user.displayName,
+        user.name,
+        user.emailAddress,
+        user.accountId,
+      }
+
+      for _, issue in ipairs(issues) do
+        -- Try multiple fields to match current user
+        local matches = false
+        if issue.assignee and issue.assignee ~= "Unassigned" then
+          for _, identifier in ipairs(user_identifiers) do
+            if identifier and issue.assignee == identifier then
+              matches = true
+              break
+            end
+          end
+        end
+
+        if matches then
+          table.insert(filtered, issue)
+        end
+      end
+
+      callback(filtered)
+    end)
+  end
 
   -- HELP VIEW
   if view_name == "Help" then
@@ -284,26 +332,30 @@ function M.load_view(project_key, view_name)
   local cached_issues = state.cache[cache_key]
 
   local function process_issues(issues)
-    vim.schedule(function()
-      common_ui.stop_loading()
-      ensure_window()
+    filter_issues_if_needed(issues, function(filtered_issues)
+      vim.schedule(function()
+        common_ui.stop_loading()
+        ensure_window()
 
-      render.clear(state.buf)
+        render.clear(state.buf)
 
-      if not issues or #issues == 0 then
-        state.tree = {}
-        render.render_issue_tree(state.tree, state.current_view)
-        vim.notify("No issues found in " .. view_name .. ".", vim.log.levels.WARN)
-      else
-        state.tree = util.build_issue_tree(issues)
-        render.render_issue_tree(state.tree, state.current_view)
-        if not cached_issues then
-          vim.notify("Loaded " .. view_name .. " for " .. project_key, vim.log.levels.INFO)
+        if not filtered_issues or #filtered_issues == 0 then
+          state.tree = {}
+          render.render_issue_tree(state.tree, state.current_view)
+          local msg = state.filter_my_tasks and "No issues assigned to you in " or "No issues found in "
+          vim.notify(msg .. view_name .. ".", vim.log.levels.WARN)
+        else
+          state.tree = util.build_issue_tree(filtered_issues)
+          render.render_issue_tree(state.tree, state.current_view)
+          if not cached_issues then
+            local count_msg = state.filter_my_tasks and " (" .. #filtered_issues .. " of " .. #issues .. " shown)" or ""
+            vim.notify("Loaded " .. view_name .. " for " .. project_key .. count_msg, vim.log.levels.INFO)
+          end
         end
-      end
 
-      helper.restore_view(old_view)
-      M.setup_keymaps()
+        helper.restore_view(old_view)
+        M.setup_keymaps()
+      end)
     end)
   end
 
@@ -662,6 +714,14 @@ function M.open(project_key)
   end
 
   M.load_view(project_key, "Active Sprint")
+end
+
+-- Toggle filter for current user's tasks
+function M.toggle_my_tasks_filter()
+  state.filter_my_tasks = not state.filter_my_tasks
+  local status = state.filter_my_tasks and "ON" or "OFF"
+  vim.notify("My Tasks Filter: " .. status, vim.log.levels.INFO)
+  M.refresh_view()
 end
 
 return M

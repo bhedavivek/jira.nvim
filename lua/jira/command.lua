@@ -1,8 +1,18 @@
 ---@class Jira.Command
 local M = {}
 
+local config = require("jira.common.config")
+
 ---@type string[]
 M.SUBCOMMANDS = { "info", "edit", "create" }
+
+-- Get project key with fallback to default
+local function get_project_key(provided_key)
+  if provided_key then
+    return provided_key:upper()
+  end
+  return config.options.jira.default_project
+end
 
 ---@param args string
 function M.execute(args)

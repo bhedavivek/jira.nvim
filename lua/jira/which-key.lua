@@ -13,7 +13,7 @@ function M.setup()
     { "<leader>j", group = "JIRA" },
     { "<leader>jo", "<cmd>Jira<cr>", desc = "Open JIRA Board" },
     { "<leader>jd", "<cmd>JiraDebug<cr>", desc = "Debug JIRA API" },
-    { "<leader>jc", function() require("jira").create() end, desc = "Create Issue" },
+    { "<leader>jc", "<cmd>Jira create<cr>", desc = "Create Issue" },
   })
 end
 
@@ -51,6 +51,7 @@ function M.setup_board_keys()
     { "gw", desc = "Add Time" },
     { "gb", desc = "Checkout Branch" },
     { "go", desc = "Show Child Issues" },
+    { "gm", desc = "Toggle My Tasks Filter" },
 
     { "i", desc = "Create Issue" },
     { "K", desc = "Quick Details" },
