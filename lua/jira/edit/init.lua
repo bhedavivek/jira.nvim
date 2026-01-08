@@ -184,7 +184,12 @@ local function on_save()
   if in_description then
     local description_text = table.concat(desc_lines, "\n")
     description_text = common_util.strim(description_text)
-    fields.description = common_util.markdown_to_adf(description_text)
+    local version = require("jira.jira-api.version")
+    if version.is_v2() then
+      fields.description = description_text
+    else
+      fields.description = common_util.markdown_to_adf(description_text)
+    end
   end
 
   jira_api.update_issue(state.issue.key, fields, function(_, err)

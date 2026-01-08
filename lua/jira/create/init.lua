@@ -212,7 +212,12 @@ local function on_save()
     end
     description_text = common_util.strim(description_text)
     if description_text ~= "" then
-      fields.description = common_util.markdown_to_adf(description_text)
+      local version = require("jira.jira-api.version")
+      if version.is_v2() then
+        fields.description = description_text
+      else
+        fields.description = common_util.markdown_to_adf(description_text)
+      end
     end
   end
 
