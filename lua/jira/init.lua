@@ -18,6 +18,9 @@ end
 function M.setup(opts)
   config.setup(opts)
 
+  -- Setup which-key integration if available
+  pcall(require, "jira.which-key")
+
   vim.api.nvim_create_user_command("Jira", function(ctx)
     command.execute(ctx.args)
   end, {

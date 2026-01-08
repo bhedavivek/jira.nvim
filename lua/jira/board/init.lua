@@ -136,6 +136,11 @@ end
 function M.setup_keymaps()
   local opts = { noremap = true, silent = true, buffer = state.buf }
 
+  -- Setup which-key integration if available
+  pcall(function()
+    require("jira.which-key").setup_board_keys()
+  end)
+
   -- Clear existing buffer keymaps
   local keys_to_clear = {
     "o",
