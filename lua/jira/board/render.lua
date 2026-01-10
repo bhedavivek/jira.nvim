@@ -412,6 +412,7 @@ function M.render_help(view)
     { k = "gw", d = "Add time" },
     { k = "gb", d = "Checkout/Create Branch" },
     { k = "go", d = "Show Child Issues (Sub-tasks)" },
+    { k = "gp", d = "View Parent & Children (JQL)" },
   }
 
   local lines = { "" }

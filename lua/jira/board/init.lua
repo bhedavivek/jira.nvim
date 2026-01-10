@@ -215,6 +215,9 @@ function M.setup_keymaps()
   vim.keymap.set("n", "go", function()
     require("jira.board").show_child_issues()
   end, opts)
+  vim.keymap.set("n", "gp", function()
+    require("jira.board").show_parent_issue()
+  end, opts)
 end
 
 function M.load_view(project_key, view_name)
@@ -594,6 +597,18 @@ function M.show_child_issues()
   -- Switch to JQL view and set query to find child issues
   state.custom_jql = 'parent = "' .. node.key .. '"'
   state.current_query = "Child Issues of " .. node.key
+  M.load_view(state.project_key, "JQL")
+end
+
+function M.show_parent_issue()
+  local node = helper.get_node_at_cursor()
+  if not node or not node.parent then
+    vim.notify("Issue does not have a parent or parent not found.", vim.log.levels.WARN)
+    return
+  end
+
+  state.custom_jql = string.format('key = "%s" OR parent = "%s"', node.parent, node.parent)
+  state.current_query = "Parent & Children of " .. node.parent
   M.load_view(state.project_key, "JQL")
 end
 
