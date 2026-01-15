@@ -77,12 +77,12 @@ local function parse_adf(node)
   if not node then
     return ""
   end
-  
+
   -- Handle plain text
   if type(node) == "string" then
     return node
   end
-  
+
   -- Handle table structure
   if type(node) ~= "table" or vim.tbl_isempty(node) then
     return ""
@@ -171,17 +171,17 @@ function M.adf_to_markdown(adf)
   if not adf or adf == vim.NIL then
     return ""
   end
-  
+
   -- Handle plain text (v2 API)
   if type(adf) == "string" then
     return adf
   end
-  
+
   -- Handle ADF structure (v3 API)
   if type(adf) == "table" then
     return parse_adf(adf)
   end
-  
+
   return ""
 end
 

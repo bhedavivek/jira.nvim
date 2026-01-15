@@ -290,12 +290,12 @@ function M.get_issue(issue_key, callback)
       end
       return
     end
-    
+
     -- Ensure the response has the expected structure
     if result and not result.key then
       result.key = issue_key
     end
-    
+
     if callback and vim.is_callable(callback) then
       callback(result, nil)
     end

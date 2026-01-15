@@ -118,19 +118,29 @@ local function on_save()
     elseif not in_description then
       -- Parse metadata
       local p_val = line:match("^%*%*Priority%*%*:?%s*(.*)")
-      if p_val then priority = common_util.strim(p_val) end
+      if p_val then
+        priority = common_util.strim(p_val)
+      end
 
       local a_val = line:match("^%*%*Assignee%*%*:?%s*(.*)")
-      if a_val then assignee_text = common_util.strim(a_val) end
+      if a_val then
+        assignee_text = common_util.strim(a_val)
+      end
 
       local sp_val = line:match("^%*%*Story Points%*%*:?%s*(.*)")
-      if sp_val then story_points = common_util.strim(sp_val) end
+      if sp_val then
+        story_points = common_util.strim(sp_val)
+      end
 
       local est_val = line:match("^%*%*Estimate%*%*:?%s*(.*)")
-      if est_val then estimate = common_util.strim(est_val) end
+      if est_val then
+        estimate = common_util.strim(est_val)
+      end
 
       local labels_val = line:match("^%*%*Labels%*%*:?%s*(.*)")
-      if labels_val then labels = common_util.strim(labels_val) end
+      if labels_val then
+        labels = common_util.strim(labels_val)
+      end
     elseif in_description then
       table.insert(desc_lines, line)
     end
