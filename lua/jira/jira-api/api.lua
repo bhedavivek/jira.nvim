@@ -9,56 +9,28 @@ local config = require("jira.common.config")
 local util = require("jira.common.util")
 local version = require("jira.jira-api.version")
 
--- Get environment variables
----@return JiraAuthOptions auth_opts
-local function get_env()
-  local env = {}
-
-  -- Check environment variables first, fall back to config
-  env.base = os.getenv("JIRA_BASE_URL") or config.options.jira.base
-  env.email = os.getenv("JIRA_EMAIL") or config.options.jira.email
-  env.token = os.getenv("JIRA_TOKEN") or config.options.jira.token
-  env.type = (os.getenv("JIRA_AUTH_TYPE") or config.options.jira.type or "basic"):lower()
-  env.api_version = os.getenv("JIRA_API_VERSION") or config.options.jira.api_version or "3"
-  env.limit = config.options.jira.limit
-
-  return env
-end
-
--- Validate environment variables
----@return boolean valid
-local function validate_env()
-  local env = get_env()
-  local is_pat = env.type == "pat"
-  if not env.base or (not is_pat and not env.email) or not env.token then
-    vim.notify("Missing Jira environment variables. Please check your setup.", vim.log.levels.ERROR)
-    return false
-  end
-  return true
-end
-
 ---Execute curl command asynchronously
 ---@param method string
 ---@param endpoint string
 ---@param data? table
 ---@param callback? fun(T?: table, err?: string)
 local function curl_request(method, endpoint, data, callback)
-  if not validate_env() then
+  if not config.validate() then
     if callback and vim.is_callable(callback) then
-      callback(nil, "Missing environment variables")
+      callback(nil, "Missing configuration")
     end
     return
   end
 
-  local env = get_env()
-  local url = env.base .. endpoint
+  local jira = config.options.jira
+  local url = jira.base .. endpoint
 
   -- Build curl command
   local auth_header = ""
-  if env.type == "pat" then
-    auth_header = ('-H "Authorization: Bearer %s"'):format(env.token)
+  if (jira.type or "basic"):lower() == "pat" then
+    auth_header = ('-H "Authorization: Bearer %s"'):format(jira.token)
   else
-    auth_header = ('-u "%s:%s"'):format(env.email, env.token)
+    auth_header = ('-u "%s:%s"'):format(jira.email, jira.token)
   end
 
   local cmd = ('curl -s -X %s -H "Content-Type: application/json" -H "Accept: application/json" %s '):format(

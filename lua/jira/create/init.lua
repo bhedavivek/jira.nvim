@@ -230,6 +230,7 @@ local function on_save()
     if description_text ~= "" then
       local version = require("jira.jira-api.version")
       if version.is_v2() then
+        vim.notify("Using v2 api while creating task and saving description", vim.log.levels.WARN)
         fields.description = description_text
       else
         fields.description = common_util.markdown_to_adf(description_text)

@@ -16,8 +16,6 @@ end
 
 ---@param opts JiraConfig
 function M.setup(opts)
-  config.setup(opts)
-
   -- Setup which-key integration if available
   pcall(require, "jira.which-key")
 
@@ -29,6 +27,10 @@ function M.setup(opts)
     complete = complete,
     desc = "Jira view: :Jira [<PROJECT_KEY>] | info <ISSUE_KEY> | create [<PROJECT_KEY>]",
   })
+
+  config.setup(opts)
+  -- Validate configuration after everything is set up
+  config.validate()
 end
 
 M.open = command.execute

@@ -46,7 +46,25 @@ M.options = vim.deepcopy(M.defaults)
 
 ---@param opts JiraConfig
 function M.setup(opts)
+  -- Start with defaults, then user config
   M.options = vim.tbl_deep_extend("force", M.defaults, opts or {})
+  
+  -- Override with environment variables if they exist
+  if os.getenv("JIRA_BASE_URL") then
+    M.options.jira.base = os.getenv("JIRA_BASE_URL")
+  end
+  if os.getenv("JIRA_EMAIL") then
+    M.options.jira.email = os.getenv("JIRA_EMAIL")
+  end
+  if os.getenv("JIRA_TOKEN") then
+    M.options.jira.token = os.getenv("JIRA_TOKEN")
+  end
+  if os.getenv("JIRA_AUTH_TYPE") then
+    M.options.jira.type = os.getenv("JIRA_AUTH_TYPE")
+  end
+  if os.getenv("JIRA_API_VERSION") then
+    M.options.jira.api_version = os.getenv("JIRA_API_VERSION")
+  end
 end
 
 ---@param project_key string|nil
@@ -59,6 +77,35 @@ function M.get_project_config(project_key)
     story_point_field = p_config.story_point_field or FALLBACKS.story_point_field,
     custom_fields = p_config.custom_fields or FALLBACKS.custom_fields,
   }
+end
+
+-- Validate configuration
+---@return boolean valid
+function M.validate()
+  local jira = M.options.jira
+  local is_pat = (jira.type or "basic"):lower() == "pat"
+  
+  local missing = {}
+  if not jira.base or jira.base == "" then
+    table.insert(missing, "base URL")
+  end
+  if not is_pat and (not jira.email or jira.email == "") then
+    table.insert(missing, "email")
+  end
+  if not jira.token or jira.token == "" then
+    table.insert(missing, "token")
+  end
+  
+  if #missing > 0 then
+    local auth_type = is_pat and "PAT" or "basic auth"
+    vim.notify(
+      string.format("Missing Jira configuration for %s: %s. Set via config or environment variables.", 
+        auth_type, table.concat(missing, ", ")), 
+      vim.log.levels.ERROR
+    )
+    return false
+  end
+  return true
 end
 
 return M

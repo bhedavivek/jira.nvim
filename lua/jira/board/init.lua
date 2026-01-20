@@ -697,14 +697,7 @@ function M.open(project_key)
     return
   end
 
-  -- Validate Config
-  local jc = config.options.jira
-  if not jc.base or jc.base == "" or not jc.email or jc.email == "" or not jc.token or jc.token == "" then
-    vim.notify("Jira configuration is missing. Please run setup() with base, email, and token.", vim.log.levels.ERROR)
-    return
-  end
-
-  if not project_key then
+  if not project_key or project_key == "" then
     project_key = vim.fn.input("Jira Project Key: ")
   end
 

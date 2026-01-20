@@ -70,7 +70,10 @@ function M.execute(args)
   local project_key = parts[1]
   if project_key then
     project_key = project_key:upper()
+  else
+    project_key = config.options.jira.default_project
   end
+
   require("jira.board").open(project_key)
 end
 
