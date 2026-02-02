@@ -13,19 +13,18 @@ local state = {
   valid_issue_types = {},
 }
 
-local function update_type_line(type_name)
+local function update_field_line(field_name, value)
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
     return
   end
 
   local lines = vim.api.nvim_buf_get_lines(state.buf, 0, -1, false)
   for i, line in ipairs(lines) do
-    if line:match("^%*%*Type%*%*:") then
-      local new_line = "**Type**: " .. type_name
+    if line:match("^%*%*" .. field_name .. "%*%*:") then
+      local new_line = "**" .. field_name .. "**: " .. value
       vim.api.nvim_buf_set_lines(state.buf, i - 1, i, false, { new_line })
 
-      local ns = vim.api.nvim_create_namespace("JiraCreateTypes")
-      -- Clear existing marks for this namespace in the entire buffer
+      local ns = vim.api.nvim_create_namespace("JiraCreate" .. field_name)
       vim.api.nvim_buf_clear_namespace(state.buf, ns, 0, -1)
       vim.api.nvim_buf_set_extmark(state.buf, ns, i - 1, 0, {
         virt_text = { { "  Press <Enter> to select", "Comment" } },
@@ -38,24 +37,76 @@ local function update_type_line(type_name)
   end
 end
 
+local function select_priority()
+  jira_api.get_priorities(function(priorities, err)
+    if err or not priorities then
+      vim.notify("Failed to load priorities: " .. (err or "Unknown error"), vim.log.levels.WARN)
+      return
+    end
+
+    local choices = {}
+    for _, priority in ipairs(priorities) do
+      table.insert(choices, priority.name)
+    end
+
+    vim.ui.select(choices, {
+      prompt = "Select Priority:",
+    }, function(choice)
+      if choice then
+        update_field_line("Priority", choice)
+      end
+    end)
+  end)
+end
+
+local function select_assignee()
+  jira_api.get_assignable_users(state.project_key, nil, function(users, err)
+    if err or not users then
+      vim.notify("Failed to load users: " .. (err or "Unknown error"), vim.log.levels.WARN)
+      return
+    end
+
+    local choices = { "me", "unassigned" }
+    for _, user in ipairs(users) do
+      table.insert(choices, user.displayName .. " (" .. user.name .. ")")
+    end
+
+    vim.ui.select(choices, {
+      prompt = "Select Assignee:",
+    }, function(choice)
+      if choice then
+        update_field_line("Assignee", choice)
+      end
+    end)
+  end)
+end
+
 local function select_issue_type()
   if not state.valid_issue_types or #state.valid_issue_types == 0 then
     vim.notify("No issue types available", vim.log.levels.WARN)
     return
   end
 
+  vim.ui.select(state.valid_issue_types, {
+    prompt = "Select Issue Type:",
+  }, function(choice)
+    if choice then
+      update_field_line("Type", choice)
+    end
+  end)
+end
+
+local function select_field()
   local cursor = vim.api.nvim_win_get_cursor(0)
   local row = cursor[1] - 1
   local line = vim.api.nvim_buf_get_lines(state.buf, row, row + 1, false)[1]
 
   if line and line:match("^%*%*Type%*%*:") then
-    vim.ui.select(state.valid_issue_types, {
-      prompt = "Select Issue Type:",
-    }, function(choice)
-      if choice then
-        update_type_line(choice)
-      end
-    end)
+    select_issue_type()
+  elseif line and line:match("^%*%*Priority%*%*:") then
+    select_priority()
+  elseif line and line:match("^%*%*Assignee%*%*:") then
+    select_assignee()
   end
 end
 
@@ -71,6 +122,7 @@ local function render_template()
 
   table.insert(lines, "**Type**: " .. type_default)
   table.insert(lines, "**Priority**: Medium")
+  table.insert(lines, "**Assignee**: me")
 
   if state.parent_key then
     table.insert(lines, "**Parent**: " .. state.parent_key)
@@ -125,6 +177,7 @@ local function on_save()
   local summary = nil
   local issue_type = "Task"
   local priority = "Medium"
+  local assignee = nil
   local parent_key = nil
   local story_points = nil
   local estimate = nil
@@ -150,6 +203,11 @@ local function on_save()
       local p_val = line:match("^%*%*Priority%*%*:?%s*(.*)")
       if p_val then
         priority = common_util.strim(p_val)
+      end
+
+      local assignee_val = line:match("^%*%*Assignee%*%*:?%s*(.*)")
+      if assignee_val then
+        assignee = common_util.strim(assignee_val)
       end
 
       local parent_val = line:match("^%*%*Parent%*%*:?%s*(.*)")
@@ -238,6 +296,13 @@ local function on_save()
     end
   end
 
+  -- Handle assignee
+  if assignee and assignee ~= "" and assignee:lower() == "me" then
+    if config.user and config.user.accountId then
+      fields.assignee = { accountId = config.user.accountId }
+    end
+  end
+
   jira_api.create_issue(fields, function(result, err)
     common_ui.stop_loading()
     if err then
@@ -318,7 +383,7 @@ function M.open(project_key, parent_key)
   })
 
   -- Keymap for selection
-  vim.keymap.set("n", "<CR>", select_issue_type, { buffer = buf, silent = true })
+  vim.keymap.set("n", "<CR>", select_field, { buffer = buf, silent = true })
 
   -- Fetch valid issue types
   jira_api.get_create_meta(project_key, function(issue_types, err)
@@ -351,9 +416,9 @@ function M.open(project_key, parent_key)
               local current = common_util.strim(line:match("^%*%*Type%*%*:?%s*(.*)") or "")
               -- Update default if it's the generic fallback
               if current == "Task" or current == "Sub-task" then
-                update_type_line(valid_types[1])
+                update_field_line("Type", valid_types[1])
               else
-                update_type_line(current)
+                update_field_line("Type", current)
               end
               break
             end

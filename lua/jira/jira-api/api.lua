@@ -8,6 +8,7 @@
 local config = require("jira.common.config")
 local util = require("jira.common.util")
 local version = require("jira.jira-api.version")
+local cache = require("jira.common.cache")
 
 ---Execute curl command asynchronously
 ---@param method string
@@ -15,13 +16,6 @@ local version = require("jira.jira-api.version")
 ---@param data? table
 ---@param callback? fun(T?: table, err?: string)
 local function curl_request(method, endpoint, data, callback)
-  if not config.validate() then
-    if callback and vim.is_callable(callback) then
-      callback(nil, "Missing configuration")
-    end
-    return
-  end
-
   local jira = config.options.jira
   local url = jira.base .. endpoint
 
@@ -426,6 +420,164 @@ function M.get_create_meta(project_key, callback)
       end
     end
   end)
+end
+
+-- Get all issue types
+function M.get_issue_types(callback)
+  local cached = cache.get("issue_types")
+  if cached then
+    callback(cached, nil)
+    return
+  end
+
+  local endpoint = version.get_api_path() .. "/issuetype"
+  curl_request("GET", endpoint, nil, function(result, err)
+    if not err and result then
+      cache.set("issue_types", result)
+    end
+    callback(result, err)
+  end)
+end
+
+-- Get all priorities
+function M.get_priorities(callback)
+  local cached = cache.get("priorities")
+  if cached then
+    callback(cached, nil)
+    return
+  end
+
+  local endpoint = version.get_api_path() .. "/priority"
+  curl_request("GET", endpoint, nil, function(result, err)
+    if not err and result then
+      cache.set("priorities", result)
+    end
+    callback(result, err)
+  end)
+end
+
+-- Get assignable users
+-- Get assignable users with dynamic prefix expansion
+function M.get_assignable_users(project_key, issue_key, callback)
+  local cache_key = "assignable_users_" .. (project_key or "")
+  local cached = cache.get(cache_key)
+  if cached then
+    callback(cached, nil)
+    return
+  end
+
+  local all_users = {}
+  local user_ids = {}
+  local chars = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
+  local prefixes_to_process = {}
+  local processed_prefixes = {}
+  local max_depth = 3
+  
+  -- Start with single character prefixes only
+  for _, char in ipairs(chars) do
+    table.insert(prefixes_to_process, char)
+  end
+
+  local function fetch_with_prefix(prefix)
+    -- Skip if already processed
+    if processed_prefixes[prefix] then
+      -- Process next prefix
+      if #prefixes_to_process > 0 then
+        local next_prefix = table.remove(prefixes_to_process, 1)
+        vim.defer_fn(function() fetch_with_prefix(next_prefix) end, 50)
+      else
+        vim.notify("Final assignable user count: " .. #all_users, vim.log.levels.INFO)
+        if project_key then
+          cache.set(cache_key, all_users)
+        end
+        callback(all_users, nil)
+      end
+      return
+    end
+    
+    processed_prefixes[prefix] = true
+    local params = { "maxResults=100" }
+    if prefix ~= "" then
+      table.insert(params, "username=" .. prefix .. "*")
+    end
+    if project_key then
+      table.insert(params, "project=" .. project_key)
+    end
+    if issue_key then
+      table.insert(params, "issueKey=" .. issue_key)
+    end
+
+    local query_string = "?" .. table.concat(params, "&")
+    local endpoint = version.get_api_path() .. "/user/assignable/search" .. query_string
+
+    curl_request("GET", endpoint, nil, function(result, err)
+      if err then
+        callback(nil, err)
+        return
+      end
+
+      local new_users = 0
+      if result and #result > 0 then
+        for _, user in ipairs(result) do
+          local user_id = user.accountId or user.name
+          if not user_ids[user_id] then
+            table.insert(all_users, user)
+            user_ids[user_id] = true
+            new_users = new_users + 1
+          end
+        end
+
+        -- If we got exactly 100 results and haven't reached max depth, expand this prefix further
+        if #result == 100 and #prefix < max_depth then
+          for _, char in ipairs(chars) do
+            table.insert(prefixes_to_process, prefix .. char)
+          end
+          vim.notify("Prefix '" .. (prefix == "" and "empty" or prefix) .. "': 100 users (expanding), " .. new_users .. " new, total: " .. #all_users, vim.log.levels.INFO)
+        else
+          vim.notify("Prefix '" .. (prefix == "" and "empty" or prefix) .. "': " .. #result .. " users, " .. new_users .. " new, total: " .. #all_users, vim.log.levels.INFO)
+        end
+      else
+        vim.notify("Prefix '" .. (prefix == "" and "empty" or prefix) .. "': 0 users", vim.log.levels.INFO)
+      end
+
+      -- Process next prefix
+      if #prefixes_to_process > 0 then
+        local next_prefix = table.remove(prefixes_to_process, 1)
+        vim.defer_fn(function() fetch_with_prefix(next_prefix) end, 50)
+      else
+        vim.notify("Final assignable user count: " .. #all_users, vim.log.levels.INFO)
+        if project_key then
+          cache.set(cache_key, all_users)
+        end
+        callback(all_users, nil)
+      end
+    end)
+  end
+
+  fetch_with_prefix("")
+end
+
+-- Get board for project
+---@param project_key string
+---@param callback fun(board?: table, err?: string)
+function M.get_board_for_project(project_key, callback)
+  local endpoint = "/rest/agile/1.0/board?projectKeyOrId=" .. project_key
+  curl_request("GET", endpoint, nil, function(result, err)
+    if err then
+      callback(nil, err)
+      return
+    end
+    local boards = result and result.values or {}
+    callback(boards[1], nil)
+  end)
+end
+
+-- Get board configuration (columns)
+---@param board_id number
+---@param callback fun(config?: table, err?: string)
+function M.get_board_config(board_id, callback)
+  local endpoint = "/rest/agile/1.0/board/" .. board_id .. "/configuration"
+  curl_request("GET", endpoint, nil, callback)
 end
 
 return M

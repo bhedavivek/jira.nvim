@@ -44,11 +44,14 @@ M.defaults = {
 ---@type JiraConfig
 M.options = vim.deepcopy(M.defaults)
 
+-- Cache for current user info
+M.user = nil
+
 ---@param opts JiraConfig
 function M.setup(opts)
   -- Start with defaults, then user config
   M.options = vim.tbl_deep_extend("force", M.defaults, opts or {})
-  
+
   -- Override with environment variables if they exist
   if os.getenv("JIRA_BASE_URL") then
     M.options.jira.base = os.getenv("JIRA_BASE_URL")
@@ -79,12 +82,29 @@ function M.get_project_config(project_key)
   }
 end
 
+-- Fetch and cache current user info
+function M.fetch_user()
+  if M.user then
+    return M.user -- Return cached user
+  end
+
+  local jira_api = require("jira.jira-api.api")
+  jira_api.get_myself(function(user, err)
+    if not err and user and user.accountId then
+      M.user = user
+      return user
+    end
+  end)
+
+  return nil -- No cached user yet
+end
+
 -- Validate configuration
 ---@return boolean valid
 function M.validate()
   local jira = M.options.jira
   local is_pat = (jira.type or "basic"):lower() == "pat"
-  
+
   local missing = {}
   if not jira.base or jira.base == "" then
     table.insert(missing, "base URL")
@@ -95,17 +115,20 @@ function M.validate()
   if not jira.token or jira.token == "" then
     table.insert(missing, "token")
   end
-  
+
   if #missing > 0 then
     local auth_type = is_pat and "PAT" or "basic auth"
     vim.notify(
-      string.format("Missing Jira configuration for %s: %s. Set via config or environment variables.", 
-        auth_type, table.concat(missing, ", ")), 
+      string.format(
+        "Missing Jira configuration for %s: %s. Set via config or environment variables.",
+        auth_type,
+        table.concat(missing, ", ")
+      ),
       vim.log.levels.ERROR
     )
+    M.fetch_user()
     return false
   end
-  return true
 end
 
 return M
