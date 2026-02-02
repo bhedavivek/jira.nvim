@@ -568,8 +568,34 @@ function M.get_board_for_project(project_key, callback)
       return
     end
     local boards = result and result.values or {}
-    callback(boards[1], nil)
+    if #boards == 0 then
+      callback(nil, "No boards found")
+    elseif #boards == 1 then
+      callback(boards[1], nil)
+    else
+      -- Multiple boards - let user select
+      vim.schedule(function()
+        vim.ui.select(boards, {
+          prompt = "Select board:",
+          format_item = function(b)
+            return ("%s (%s)"):format(b.name or "Unknown", b.type or "")
+          end,
+        }, function(selected)
+          if selected then
+            callback(selected, nil)
+          else
+            callback(nil, "No board selected")
+          end
+        end)
+      end)
+    end
   end)
+end
+
+-- Get all statuses (for ID to name mapping)
+---@param callback fun(statuses?: table, err?: string)
+function M.get_all_statuses(callback)
+  curl_request("GET", version.get_api_path() .. "/status", nil, callback)
 end
 
 -- Get board configuration (columns)

@@ -14,6 +14,9 @@
 ---@field query_map table<string,string> -- named queries -> JQL
 ---@field jql_line integer|nil       -- buffer line containing editable JQL
 ---@field filter_my_tasks boolean    -- filter to show only current user's tasks
+---@field board_id number|nil        -- Jira board ID for the project
+---@field board_columns table|nil    -- Board columns from configuration
+---@field view_mode string           -- "list" or "kanban"
 
 ---@type JiraState
 local state = {
@@ -32,6 +35,9 @@ local state = {
   query_map = {},
   jql_line = nil,
   filter_my_tasks = false,
+  board_id = nil,
+  board_columns = nil,
+  view_mode = "list",
 }
 
 return state

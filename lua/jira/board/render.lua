@@ -398,8 +398,10 @@ function M.render_help(view)
     { k = "zR", d = "Expand All Nodes" },
     { k = "zM", d = "Collapse All Nodes" },
     { k = "S, J, H", d = "Switch View (Sprint, JQL, Help)" },
+    { k = "V", d = "Toggle Kanban View (Sprint only)" },
     { k = "q", d = "Close Board" },
     { k = "r", d = "Refresh current view" },
+    { k = "R", d = "Hard refresh (clear cached prefs)" },
 
     { section = "Issue Actions" },
     { k = "i", d = "Create Issue / Sub-task (under cursor)" },

@@ -4,11 +4,15 @@ local api = vim.api
 local state = require("jira.board.state")
 local config = require("jira.common.config")
 local render = require("jira.board.render")
+local kanban = require("jira.board.kanban")
 local util = require("jira.common.util")
 local helper = require("jira.board.helper")
 local sprint = require("jira.jira-api.sprint")
+local jira_api = require("jira.jira-api.api")
 local common_ui = require("jira.common.ui")
 local board_ui = require("jira.board.ui")
+local cache = require("jira.common.cache")
+local persist = require("jira.common.persist")
 
 local function ensure_window()
   if not state.win or not vim.api.nvim_win_is_valid(state.win) then
@@ -40,7 +44,7 @@ function M.set_all_expanded(expanded)
 
   local cursor = api.nvim_win_get_cursor(state.win)
   render.clear(state.buf)
-  render.render_issue_tree(state.tree, state.current_view)
+  M.render_current_view()
 
   local line_count = api.nvim_buf_line_count(state.buf)
   if cursor[1] > line_count then
@@ -56,7 +60,7 @@ function M.toggle_node()
   if node and node.children and #node.children > 0 then
     node.expanded = not node.expanded
     render.clear(state.buf)
-    render.render_issue_tree(state.tree, state.current_view)
+    M.render_current_view()
 
     local line_count = api.nvim_buf_line_count(state.buf)
     if cursor[1] > line_count then
@@ -247,6 +251,98 @@ function M.setup_keymaps()
   vim.keymap.set("n", "gm", function()
     require("jira.board").toggle_my_tasks_filter()
   end, opts)
+  vim.keymap.set("n", "V", function()
+    require("jira.board").toggle_view_mode()
+  end, opts)
+  vim.keymap.set("n", "R", function()
+    require("jira.board").hard_refresh()
+  end, opts)
+end
+
+function M.hard_refresh()
+  cache.clear({state.project_key, "view_mode"}, true)
+  cache.clear({state.project_key, "board_id"}, true)
+  state.board_columns = nil
+  state.board_id = nil
+  vim.notify("Cleared cached preferences for " .. state.project_key, vim.log.levels.INFO)
+  M.refresh_view()
+end
+
+function M.toggle_view_mode()
+  if state.current_view ~= "Active Sprint" then
+    vim.notify("Kanban view only available for Active Sprint", vim.log.levels.WARN)
+    return
+  end
+
+  local new_mode = state.view_mode == "list" and "kanban" or "list"
+
+  if new_mode == "kanban" and not state.board_columns then
+    common_ui.start_loading("Loading board columns...")
+    M.load_board_columns(function()
+      common_ui.stop_loading()
+      state.view_mode = "kanban"
+      cache.set({state.project_key, "view_mode"}, "kanban", true)
+      M.render_current_view()
+    end)
+  else
+    state.view_mode = new_mode
+    cache.set({state.project_key, "view_mode"}, new_mode, true)
+    M.render_current_view()
+  end
+end
+
+function M.render_current_view()
+  render.clear(state.buf)
+  if state.view_mode == "kanban" and state.board_columns then
+    kanban.render(state.tree, state.board_columns)
+  else
+    render.render_issue_tree(state.tree, state.current_view)
+  end
+end
+
+function M.load_board_columns(callback)
+  local cached_board_id = cache.get({state.project_key, "board_id"}, true)
+
+  local function load_config(board_id)
+    state.board_id = board_id
+    jira_api.get_board_config(board_id, function(cfg, cfg_err)
+      if cfg_err or not cfg then
+        state.view_mode = "list"
+        if callback then callback() end
+        return
+      end
+      jira_api.get_all_statuses(function(statuses, _)
+        local status_map = {}
+        for _, s in ipairs(statuses or {}) do
+          status_map[tostring(s.id)] = s.name
+        end
+        local columns = cfg.columnConfig and cfg.columnConfig.columns or {}
+        for _, col in ipairs(columns) do
+          col.status_names = {}
+          for _, s in ipairs(col.statuses or {}) do
+            local name = status_map[tostring(s.id)]
+            if name then table.insert(col.status_names, name) end
+          end
+        end
+        state.board_columns = columns
+        if callback then vim.schedule(callback) end
+      end)
+    end)
+  end
+
+  if cached_board_id then
+    load_config(cached_board_id)
+  else
+    jira_api.get_board_for_project(state.project_key, function(board, err)
+      if err or not board then
+        state.view_mode = "list"
+        if callback then vim.schedule(callback) end
+        return
+      end
+      cache.set({state.project_key, "board_id"}, board.id, true)
+      load_config(board.id)
+    end)
+  end
 end
 
 function M.load_view(project_key, view_name)
@@ -254,6 +350,14 @@ function M.load_view(project_key, view_name)
 
   state.project_key = project_key
   state.current_view = view_name
+
+  -- Reset to list view when switching away from Active Sprint
+  if view_name ~= "Active Sprint" then
+    state.view_mode = "list"
+  else
+    -- Restore saved view mode for Active Sprint
+    state.view_mode = cache.get({project_key, "view_mode"}, true) or "list"
+  end
 
   -- Filter issues to current user if filter is enabled
   local function filter_issues_if_needed(issues, callback)
@@ -341,12 +445,19 @@ function M.load_view(project_key, view_name)
 
         if not filtered_issues or #filtered_issues == 0 then
           state.tree = {}
-          render.render_issue_tree(state.tree, state.current_view)
+          M.render_current_view()
           local msg = state.filter_my_tasks and "No issues assigned to you in " or "No issues found in "
           vim.notify(msg .. view_name .. ".", vim.log.levels.WARN)
         else
           state.tree = util.build_issue_tree(filtered_issues)
-          render.render_issue_tree(state.tree, state.current_view)
+          -- Load board columns if kanban mode but columns not loaded
+          if state.view_mode == "kanban" and not state.board_columns then
+            M.load_board_columns(function()
+              M.render_current_view()
+            end)
+          else
+            M.render_current_view()
+          end
           if not cached_issues then
             local count_msg = state.filter_my_tasks and " (" .. #filtered_issues .. " of " .. #issues .. " shown)" or ""
             vim.notify("Loaded " .. view_name .. " for " .. project_key .. count_msg, vim.log.levels.INFO)
